@@ -1,0 +1,77 @@
+# run-scraper.yml
+#
+# A real, standard way to make "runs on a schedule" true: GitHub Actions'
+# own cron scheduler. This is not something I can turn on from this chat —
+# it activates once this file sits in a GitHub repo's .github/workflows/
+# folder and that repo exists. That's a real step for you or an engineer,
+# not a formality; I have no credentials to create or push to a repo on
+# your behalf, and shouldn't.
+#
+# What it actually does once deployed: runs myneta_scraper.py and
+# run_all_states.py in a fresh Ubuntu container, on the schedule below,
+# entirely free on GitHub's standard runners for a public repo (a private
+# repo gets a generous free monthly quota, not unlimited). It commits any
+# updated JSON output back to the repo, so the data has a real version
+# history — every run is a git commit, which is itself a form of the
+# provenance the strategy doc calls for.
+#
+# STATUS AS OF 2026-07-25:
+# - robots.txt checked, live: only disallows *printer=true / *print=true —
+#   does not block the candidate-list or candidate-detail URLs this scraper
+#   uses. (curl -sD - https://www.myneta.info/robots.txt)
+# - ADR's FAQ terms, checked live: data is free for non-commercial use;
+#   their FAQ invites direct email contact for research/dataset use
+#   (adr@adrindia.org). A request email is drafted in this repo/folder
+#   (ADR-permission-email-DRAFT.md) but has NOT been sent yet — that's a
+#   real step for a person to take, not something to assume.
+# - Because of that, the cron trigger below is commented out on purpose.
+#   workflow_dispatch (manual runs from the Actions tab) still works, so
+#   this is real and runnable, just not turned on to run unattended and
+#   repeatedly against a nonprofit's servers before that email goes out.
+#   Uncomment the schedule block once you're comfortable proceeding.
+# - The cron schedule below (once daily) matches this project's own
+#   refresh-cadence recommendation for affidavits outside a nomination
+#   window. Tighten it during an active nomination window, loosen it the
+#   rest of the year — see halka-national-scale-strategy.md, Section 4.
+# - Start with --only-verified (Bihar and Madhya Pradesh only) until the
+#   other states' MyNeta slugs are confirmed by an actual fetch, not by
+#   assuming the naming pattern holds. Turn the flag off state by state.
+
+name: Halka structured data refresh
+
+on:
+  # schedule:
+  #   Once daily at 03:00 UTC (~08:30 IST) — outside a nomination window.
+  #   Cron is UTC always; adjust the hour if you want a specific IST time.
+  #   Commented out until the ADR permission email has gone out — see above.
+  #   - cron: '0 3 * * *'
+  workflow_dispatch: {}  # lets you trigger a run manually from the Actions tab
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run the multi-state orchestrator (verified states only, to start)
+        run: |
+          python run_all_states.py --out ./data --delay 3.0 --only-verified
+
+      - name: Commit updated data, if anything changed
+        run: |
+          git config user.name "halka-refresh-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Scheduled data refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
