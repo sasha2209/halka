@@ -32,17 +32,24 @@
 # a seat is worth fetching. Both jobs are in this one file; the policy layer
 # decides whether the second one actually does anything.
 #
-# BEFORE YOU UNCOMMENT THE SCHEDULE
-# ---------------------------------
+# STATUS: schedule turned ON 2026-07-27, after the ADR permission email was
+# sent (no reply yet — see the note further down by the cron line for the
+# reasoning). Runs daily at 03:00 UTC / ~08:30 IST.
+#
+# CONDITIONS THIS RELIED ON
+# --------------------------
 # - robots.txt: checked live. Only disallows *printer=true / *print=true —
 #   it does not block the candidate-list or candidate-detail URLs used here.
 # - ADR's terms (FAQ, checked live): data is free for non-commercial use, and
 #   their FAQ invites direct contact for research use (adr@adrindia.org).
-#   ADR-permission-email-DRAFT.md in this repo is written but NOT sent. That's
-#   a real step for a person, not a formality.
-# - So `schedule:` is commented out on purpose. `workflow_dispatch` works now,
-#   which means this is genuinely runnable — just not running unattended and
-#   repeatedly against a nonprofit's servers before that email goes out.
+#   ADR-permission-email-DRAFT.md in this repo was sent 2026-07-27. No reply
+#   yet — the schedule below was turned on anyway, on the reasoning that
+#   ADR's own published non-commercial terms are sufficient in the meantime,
+#   combined with the fact that this pipeline only fetches during an active
+#   election window for the affected seats rather than polling everything
+#   daily (see the refresh-cadence reasoning in halka_refresh.py). If ADR
+#   replies with a different ask — a rate limit, a preferred access path, an
+#   objection — that reply overrides this schedule; update or disable it then.
 # - Note the ask is smaller than it used to be: this pipeline only fetches
 #   candidate data during an active election window for the affected seats,
 #   rather than polling everything daily. That is a much easier thing to
@@ -51,12 +58,11 @@
 name: Halka data refresh (calendar-driven)
 
 on:
-  # schedule:
-  #   Daily at 03:00 UTC (~08:30 IST). Discovery runs every time; ingestion
-  #   runs only for seats the policy layer scores as worth fetching, so most
-  #   days this costs ~30 requests and writes nothing.
-  #   Commented out until the ADR email has gone out — see above.
-  #   - cron: '0 3 * * *'
+  schedule:
+    # Daily at 03:00 UTC (~08:30 IST). Discovery runs every time; ingestion
+    # runs only for seats the policy layer scores as worth fetching, so most
+    # days this costs ~30 requests and writes nothing.
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       budget:
