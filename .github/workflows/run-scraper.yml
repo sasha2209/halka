@@ -1,56 +1,79 @@
 # run-scraper.yml
 #
-# A real, standard way to make "runs on a schedule" true: GitHub Actions'
-# own cron scheduler. This is not something I can turn on from this chat —
-# it activates once this file sits in a GitHub repo's .github/workflows/
-# folder and that repo exists. That's a real step for you or an engineer,
-# not a formality; I have no credentials to create or push to a repo on
-# your behalf, and shouldn't.
+# Makes "refreshes on its own" true, using GitHub Actions' cron scheduler.
 #
-# What it actually does once deployed: runs myneta_scraper.py and
-# run_all_states.py in a fresh Ubuntu container, on the schedule below,
-# entirely free on GitHub's standard runners for a public repo (a private
-# repo gets a generous free monthly quota, not unlimited). It commits any
-# updated JSON output back to the repo, so the data has a real version
-# history — every run is a git commit, which is itself a form of the
-# provenance the strategy doc calls for.
+# WHAT CHANGED FROM THE ORIGINAL VERSION OF THIS FILE
+# ---------------------------------------------------
+# It used to run `run_all_states.py` on a flat daily cron: fetch everything,
+# every day, forever. That was wrong in both directions — it re-read affidavits
+# that hadn't changed since nomination day, while still being too coarse to
+# catch a withdrawal two days before a poll.
 #
-# STATUS AS OF 2026-07-25:
-# - robots.txt checked, live: only disallows *printer=true / *print=true —
-#   does not block the candidate-list or candidate-detail URLs this scraper
-#   uses. (curl -sD - https://www.myneta.info/robots.txt)
-# - ADR's FAQ terms, checked live: data is free for non-commercial use;
-#   their FAQ invites direct email contact for research/dataset use
-#   (adr@adrindia.org). A request email is drafted in this repo/folder
-#   (ADR-permission-email-DRAFT.md) but has NOT been sent yet — that's a
-#   real step for a person to take, not something to assume.
-# - Because of that, the cron trigger below is commented out on purpose.
-#   workflow_dispatch (manual runs from the Actions tab) still works, so
-#   this is real and runnable, just not turned on to run unattended and
+# It now runs the two-stage pipeline instead:
+#
+#   1. calendar_discovery.py  — one request per state index page. That page
+#      labels every seat with its polling date, including by-elections
+#      ("BANKIPUR : BYE ELECTION ON 30-07-2026"), so ~30 requests discover
+#      every live election in India. This replaces scraping eci.gov.in, which
+#      returns 403 to automated requests (verified, browser UA included).
+#
+#   2. halka_refresh.py — ranks work by urgency x volatility x gap and spends a
+#      hard request budget on the highest-value fetches only. A seat that voted
+#      last year scores near zero and is skipped; a seat polling in four days
+#      with an unparsed criminal-case count goes first.
+#
+# The cost difference is the entire point: discovering that nothing changed
+# nationally costs ~30 requests. Blindly re-scraping every seat costs ~100,000.
+#
+# TWO CADENCES, NOT ONE
+# ---------------------
+# Discovery is cheap, so it runs daily — that's what catches a by-poll being
+# announced. Ingestion is expensive, so it runs only when the policy layer says
+# a seat is worth fetching. Both jobs are in this one file; the policy layer
+# decides whether the second one actually does anything.
+#
+# BEFORE YOU UNCOMMENT THE SCHEDULE
+# ---------------------------------
+# - robots.txt: checked live. Only disallows *printer=true / *print=true —
+#   it does not block the candidate-list or candidate-detail URLs used here.
+# - ADR's terms (FAQ, checked live): data is free for non-commercial use, and
+#   their FAQ invites direct contact for research use (adr@adrindia.org).
+#   ADR-permission-email-DRAFT.md in this repo is written but NOT sent. That's
+#   a real step for a person, not a formality.
+# - So `schedule:` is commented out on purpose. `workflow_dispatch` works now,
+#   which means this is genuinely runnable — just not running unattended and
 #   repeatedly against a nonprofit's servers before that email goes out.
-#   Uncomment the schedule block once you're comfortable proceeding.
-# - The cron schedule below (once daily) matches this project's own
-#   refresh-cadence recommendation for affidavits outside a nomination
-#   window. Tighten it during an active nomination window, loosen it the
-#   rest of the year — see halka-national-scale-strategy.md, Section 4.
-# - Start with --only-verified (Bihar and Madhya Pradesh only) until the
-#   other states' MyNeta slugs are confirmed by an actual fetch, not by
-#   assuming the naming pattern holds. Turn the flag off state by state.
+# - Note the ask is smaller than it used to be: this pipeline only fetches
+#   candidate data during an active election window for the affected seats,
+#   rather than polling everything daily. That is a much easier thing to
+#   describe honestly to ADR.
 
-name: Halka structured data refresh
+name: Halka data refresh (calendar-driven)
 
 on:
   # schedule:
-  #   Once daily at 03:00 UTC (~08:30 IST) — outside a nomination window.
-  #   Cron is UTC always; adjust the hour if you want a specific IST time.
-  #   Commented out until the ADR permission email has gone out — see above.
+  #   Daily at 03:00 UTC (~08:30 IST). Discovery runs every time; ingestion
+  #   runs only for seats the policy layer scores as worth fetching, so most
+  #   days this costs ~30 requests and writes nothing.
+  #   Commented out until the ADR email has gone out — see above.
   #   - cron: '0 3 * * *'
-  workflow_dispatch: {}  # lets you trigger a run manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: 'Max HTTP requests for the ingestion stage'
+        required: false
+        default: '200'
+      dry_run:
+        description: 'Plan only, fetch nothing (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
-  scrape:
+  refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -61,17 +84,45 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4
 
-      - name: Run the multi-state orchestrator (verified states only, to start)
+      # Offline self-tests. If the parser has drifted from MyNeta's real markup,
+      # fail here rather than writing a run's worth of malformed candidate
+      # records into the repo and serving them to voters.
+      - name: Run self-tests (no network)
         run: |
-          python run_all_states.py --out ./data --delay 3.0 --only-verified
+          python myneta_scraper.py
+          python refresh_policy.py
+          python promise_taxonomy.py
+          python calendar_discovery.py --self-test
+          python halka_refresh.py --self-test
+
+      # Stage 1 — cheap. One request per state, discovers every live election.
+      - name: Discover the election calendar
+        run: |
+          python calendar_discovery.py \
+            --states Bihar2025 MadhyaPradesh2023 Gujarat2022 \
+            --delay 3.0 --out election_calendar.json
+
+      # Stage 2 — expensive, and budgeted. Human-verified calendar entries in
+      # election_calendar_curated.json take precedence over discovered ones.
+      - name: Refresh candidate data (budgeted, priority-ordered)
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python halka_refresh.py --budget "${{ github.event.inputs.budget || 200 }}"
+          else
+            python halka_refresh.py --execute --budget "${{ github.event.inputs.budget || 200 }}" --delay 3.0
+          fi
+
+      # Rebuild the frontend so the app reflects whatever was just fetched.
+      - name: Rebuild the app
+        run: python build_app.py
 
       - name: Commit updated data, if anything changed
         run: |
           git config user.name "halka-refresh-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/
-          git diff --cached --quiet || git commit -m "Scheduled data refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git add data/ election_calendar.json refresh_state.json halka-app.html
+          git diff --cached --quiet && echo "No changes this run." && exit 0
+          git commit -m "Data refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push

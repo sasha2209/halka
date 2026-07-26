@@ -1,0 +1,83 @@
+{
+  "discovered_at": "2026-07-26T13:19:42.292353+00:00",
+  "today": "2026-07-26",
+  "states_checked": [
+    "Bihar2025",
+    "MadhyaPradesh2023",
+    "Gujarat2022"
+  ],
+  "request_count": 3,
+  "seats_total": 670,
+  "upcoming": [
+    {
+      "myneta_slug": "Bihar2025",
+      "myneta_constituency_id": 252,
+      "constituency": "BANKIPUR",
+      "poll_date": "2026-07-30",
+      "election_type": "bye-election"
+    },
+    {
+      "myneta_slug": "MadhyaPradesh2023",
+      "myneta_constituency_id": 234,
+      "constituency": "DATIA",
+      "poll_date": "2026-07-30",
+      "election_type": "bye-election"
+    },
+    {
+      "myneta_slug": "Gujarat2022",
+      "myneta_constituency_id": 618,
+      "constituency": "MANJALPUR",
+      "poll_date": "2026-07-30",
+      "election_type": "bye-election"
+    }
+  ],
+  "errors": [],
+  "note": "Polling dates are as published on MyNeta state index pages. Nomination, scrutiny and withdrawal dates are NOT available from this source and are left unset — they come from the ECI notification and need a human to fill in. Seats here are flagged unverified until that happens.",
+  "events": [
+    {
+      "constituency": "BANKIPUR",
+      "state": "Bihar2025",
+      "myneta_slug": "Bihar2025",
+      "myneta_constituency_id": 252,
+      "poll": "2026-07-30",
+      "counting": null,
+      "notification": null,
+      "nomination_last": null,
+      "scrutiny": null,
+      "withdrawal_last": null,
+      "verified": false,
+      "source": "https://www.myneta.info/Bihar2025/ (index page, auto-discovered)",
+      "election_type": "bye-election"
+    },
+    {
+      "constituency": "DATIA",
+      "state": "MadhyaPradesh2023",
+      "myneta_slug": "MadhyaPradesh2023",
+      "myneta_constituency_id": 234,
+      "poll": "2026-07-30",
+      "counting": null,
+      "notification": null,
+      "nomination_last": null,
+      "scrutiny": null,
+      "withdrawal_last": null,
+      "verified": false,
+      "source": "https://www.myneta.info/MadhyaPradesh2023/ (index page, auto-discovered)",
+      "election_type": "bye-election"
+    },
+    {
+      "constituency": "MANJALPUR",
+      "state": "Gujarat2022",
+      "myneta_slug": "Gujarat2022",
+      "myneta_constituency_id": 618,
+      "poll": "2026-07-30",
+      "counting": null,
+      "notification": null,
+      "nomination_last": null,
+      "scrutiny": null,
+      "withdrawal_last": null,
+      "verified": false,
+      "source": "https://www.myneta.info/Gujarat2022/ (index page, auto-discovered)",
+      "election_type": "bye-election"
+    }
+  ]
+}

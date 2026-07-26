@@ -1,0 +1,39 @@
+{
+  "constituency": "MANJALPUR",
+  "state": "Gujarat",
+  "myneta_slug": "Gujarat2022",
+  "myneta_constituency_id": 618,
+  "source": "https://www.myneta.info/Gujarat2022/index.php?action=show_candidates&constituency_id=618",
+  "fetched_at": "2026-07-26T13:30:15.785091+00:00",
+  "phase": "campaign",
+  "fingerprint": "f032b90c341fc1e32bc0752a991666c6bd0dc7bfcff887577cfec3df3e90ce4c",
+  "candidate_count": 2,
+  "candidates": [
+    {
+      "name": "Bhikhabhai Rabari",
+      "party": "INC",
+      "age": 79,
+      "education": "Graduate Professional  \n        B.E. (Mechanical) Year 1972. Maharaja Sayajirao University of Baroda, Vadodara.",
+      "profession": "Income From FD",
+      "criminalCount": 0,
+      "assets": "Rs 5,28,20,065 ~5 Crore+",
+      "liabilities": "Nil",
+      "sourceUrl": "https://www.myneta.info/Gujarat2022/candidate.php?candidate_id=6821",
+      "needsReview": false,
+      "missingFields": []
+    },
+    {
+      "name": "Satendrabhai Patel",
+      "party": "BJP",
+      "age": 62,
+      "education": "10th Pass  \n        Pratap School Vadodara 1983 SSC Pass.",
+      "profession": "Farmer, businessman and social worker.",
+      "criminalCount": 0,
+      "assets": "Rs 51,52,83,376 ~51 Crore+",
+      "liabilities": "Nil",
+      "sourceUrl": "https://www.myneta.info/Gujarat2022/candidate.php?candidate_id=6822",
+      "needsReview": false,
+      "missingFields": []
+    }
+  ]
+}

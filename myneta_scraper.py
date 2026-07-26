@@ -143,6 +143,35 @@ FIELD_PATTERNS = {
 
 NO_CRIMINAL_CASES = re.compile(r"No criminal cases", re.IGNORECASE)
 
+# Assets and liabilities live in an "Assets & Liabilities" block, live-verified
+# 2026-07-26 against real Bankipur by-poll pages:
+#
+#     Assets:         Rs\xa08,17,47,579  ~8\xa0Crore+
+#     Liabilities:    Rs\xa03,31,58,451  ~3\xa0Crore+
+#
+# Two things this pattern has to survive. First, the spaces inside the figures
+# are NON-BREAKING (\xa0), not ordinary spaces — matching on \s handles both,
+# but a naive literal " " does not, and that was worth pinning down rather than
+# discovering later against a page that silently returns None. Second, a
+# candidate declaring nothing renders "Nil" instead of a rupee figure, so the
+# alternation accepts that rather than treating a real, meaningful "Nil"
+# declaration as a parse failure — those are different states and the project's
+# rules say never to collapse them.
+MONEY = r"(?:Rs[\s ]*[\d,]+(?:[\s ]*~[\s ]*[^\n]*?)?|Nil)"
+ASSET_PATTERNS = {
+    "assets": r"Assets\s*:\s*(" + MONEY + r")\s*(?=\n|Liabilities)",
+    "liabilities": r"Liabilities\s*:\s*(" + MONEY + r")\s*(?=\n|$)",
+}
+
+
+def _clean_money(v: str | None) -> str | None:
+    """Normalizes non-breaking spaces so downstream display and hashing are
+    stable. Keeps the '~8 Crore+' human-readable suffix ADR provides, since
+    that's the form voters actually recognize."""
+    if v is None:
+        return None
+    return re.sub(r"[\s ]+", " ", v).strip()
+
 
 def extract_candidate_fields(raw_text: str) -> dict:
     fields = {}
@@ -151,6 +180,9 @@ def extract_candidate_fields(raw_text: str) -> dict:
         fields[key] = match.group(1).strip() if match else None
     if fields.get("criminal_count") is None and NO_CRIMINAL_CASES.search(raw_text):
         fields["criminal_count"] = "0"
+    for key, pattern in ASSET_PATTERNS.items():
+        match = re.search(pattern, raw_text, re.IGNORECASE)
+        fields[key] = _clean_money(match.group(1)) if match else None
     return fields
 
 
@@ -164,10 +196,39 @@ def to_halka_schema(fields: dict, name: str, source_url: str) -> dict:
         "education": fields.get("education"),
         "profession": fields.get("self_profession"),
         "criminalCount": int(fields["criminal_count"]) if fields.get("criminal_count") else None,
+        "assets": fields.get("assets"),
+        "liabilities": fields.get("liabilities"),
         "sourceUrl": source_url,
         "needsReview": bool(missing),
         "missingFields": missing,
     }
+
+
+# Candidate links on a constituency list page, e.g.
+#   <a href="candidate.php?candidate_id=2954">REKHA KUMARI</a>
+# Enumerating these is what turns a one-constituency fetch into a real
+# ingestion run. Written against markup fetched live on 2026-07-26 rather
+# than guessed at — the earlier version of this file deliberately left the
+# loop unimplemented because it had never seen the real page.
+RE_CANDIDATE_LINK = re.compile(
+    r'href=["\']?candidate\.php\?candidate_id=(\d+)["\']?[^>]*>\s*([^<]+?)\s*<',
+    re.IGNORECASE,
+)
+
+
+def enumerate_candidates(list_html: str) -> list[dict]:
+    """Returns [{candidate_id, name}] for one constituency, de-duplicated.
+
+    MyNeta links the same candidate more than once on some list pages (name
+    and a separate detail link), so first-seen wins and the rest are dropped.
+    """
+    seen: dict[int, str] = {}
+    for cid, name in RE_CANDIDATE_LINK.findall(list_html):
+        cid_i = int(cid)
+        name = name.strip()
+        if cid_i not in seen and name and not name.lower().startswith("click"):
+            seen[cid_i] = name
+    return [{"candidate_id": k, "name": v} for k, v in sorted(seen.items())]
 
 
 def run(state_year: str, constituency_id: int, out_dir: str):
@@ -235,4 +296,42 @@ if __name__ == "__main__":
         assert extract_candidate_fields(samples["Sanjiv Chaurasia"])["age"] == "56"
         assert extract_candidate_fields(samples["Prashant Kishor"])["criminal_count"] == "8"
         assert extract_candidate_fields(samples["Prashant Kishor"])["party"].strip() == "Jan Suraaj Party"
+
+        # --- Assets & liabilities, added 2026-07-26 --------------------------
+        # Verbatim from Rekha Kumari's live page (Bankipur by-poll, candidate
+        # 2954), non-breaking spaces included exactly as served. Kept in raw
+        # form so the test breaks if the \xa0 handling regresses — that was the
+        # non-obvious part of this pattern.
+        assets_sample = (
+            "Crime-O-Meter \n Number of Criminal Cases:  1 \n Assets & Liabilities \n"
+            "  Assets:         Rs\xa08,17,47,579  ~8\xa0Crore+   \n"
+            "  Liabilities:    Rs\xa03,31,58,451  ~3\xa0Crore+   \n"
+            " Educational Details \n        Category: Graduate  \n"
+        )
+        af = extract_candidate_fields(assets_sample)
+        assert af["assets"] == "Rs 8,17,47,579 ~8 Crore+", af["assets"]
+        assert af["liabilities"] == "Rs 3,31,58,451 ~3 Crore+", af["liabilities"]
+        assert af["criminal_count"] == "1"
+
+        # A "Nil" declaration is a real declared value, not a parse failure —
+        # these must stay distinguishable from a genuinely missing field.
+        nil_sample = "Assets & Liabilities \n  Assets: Nil \n  Liabilities: Nil \n Educational Details \n"
+        nf = extract_candidate_fields(nil_sample)
+        assert nf["assets"] == "Nil" and nf["liabilities"] == "Nil", nf
+        absent = extract_candidate_fields("Party:BJP Age: 40")
+        assert absent["assets"] is None, "a page with no asset block must yield None, not 'Nil'"
+
+        # --- Candidate enumeration ------------------------------------------
+        # Real link markup from the Bankipur by-poll list page.
+        list_sample = (
+            '<a href="candidate.php?candidate_id=2949">Upendra Sahani</a>'
+            '<a href="candidate.php?candidate_id=2954">Rekha Kumari</a>'
+            '<a href="candidate.php?candidate_id=2954">Rekha Kumari</a>'  # duplicate link
+        )
+        enumerated = enumerate_candidates(list_sample)
+        assert len(enumerated) == 2, f"duplicates must collapse, got {enumerated}"
+        assert enumerated[0] == {"candidate_id": 2949, "name": "Upendra Sahani"}, enumerated[0]
+
         print("Self-test passed against real MyNeta text from this project's research.")
+        print("  (covers field parsing, assets/liabilities incl. non-breaking spaces,")
+        print("   Nil-vs-missing, and candidate enumeration)")

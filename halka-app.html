@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halka — know your ballot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-navy:#16233B; --ink-navy-deep:#0F1928;
+    --paper:#F4EFDD; --paper-dark:#E7DFC6; --paper-card:#FBF8EE;
+    --text-ink:#202B3D; --text-muted:#5B6B80; --text-faint:#8C9199;
+    --line:#D9D0B4; --stamp-red:#A6362C;
+    --party-a:#8B5E3C; --party-b:#46607A; --party-c:#5C6E4F; --party-ind:#6B4A63;
+    --amber:#8A6A1F; --good:#4A6B47;
+    --serif:'Fraunces',serif; --sans:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ink-navy-deep);
+    background-image:radial-gradient(circle at 20% 0%, var(--ink-navy) 0%, var(--ink-navy-deep) 65%);
+    font-family:var(--sans); color:var(--text-ink); min-height:100vh; padding:32px 16px 60px;
+  }
+  .stack{ position:relative; max-width:520px; margin:0 auto; }
+  .stack::before,.stack::after{ content:''; position:absolute; background:var(--paper-dark); border:1px solid var(--line); border-radius:6px; }
+  .stack::before{ top:10px; left:8px; right:-8px; bottom:-10px; transform:rotate(-0.8deg); z-index:0; }
+  .stack::after{ top:5px; left:-6px; right:6px; bottom:-5px; transform:rotate(0.6deg); z-index:0; }
+  .app{ position:relative; z-index:1; background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:28px 22px 22px; }
+  header{ margin-bottom:18px; }
+  .wordmark{ font-family:var(--serif); font-weight:600; font-size:28px; letter-spacing:-0.01em; margin:0; }
+  .tagline{ font-size:13px; color:var(--text-muted); margin:4px 0 0; }
+  .about-toggle{ background:none; border:none; padding:0; font-family:var(--sans); font-size:12px; color:var(--stamp-red); text-decoration:underline; cursor:pointer; margin-top:10px; }
+  .about-panel{ display:none; margin-top:12px; padding:12px 14px; background:rgba(255,255,255,0.35); border:1px dashed var(--line); border-radius:4px; font-size:12.5px; line-height:1.6; color:var(--text-muted); }
+  .about-panel.open{ display:block; }
+  .about-panel b{ color:var(--text-ink); } .about-panel a{ color:var(--stamp-red); }
+  .banner{ font-size:11.5px; letter-spacing:0.03em; color:var(--stamp-red); background:rgba(166,54,44,0.08); border:1px solid rgba(166,54,44,0.25); border-radius:4px; padding:8px 10px; margin:16px 0; font-family:var(--mono); font-weight:500; line-height:1.6; }
+  label.field-label{ display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:500; }
+  select{ width:100%; font-family:var(--sans); font-size:14px; padding:10px 12px; border-radius:4px; border:1px solid var(--line); background:#fff; color:var(--text-ink); }
+  .empty-state{ padding:22px 14px; text-align:center; color:var(--text-muted); font-size:13px; border:1px dashed var(--line); border-radius:4px; line-height:1.6; }
+  .list-meta{ display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--text-muted); margin:14px 0 4px; }
+  .election-note{ font-size:11px; color:var(--amber); background:rgba(138,106,31,0.08); border:1px solid rgba(138,106,31,0.25); border-radius:4px; padding:6px 9px; margin-bottom:10px; line-height:1.55; }
+
+  /* --- action bar --- */
+  .actions{ display:flex; gap:8px; margin:12px 0 14px; }
+  .action-btn{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-family:var(--sans); font-size:12.5px; font-weight:600; padding:10px 8px; border:1px solid var(--ink-navy); background:var(--ink-navy); color:var(--paper); border-radius:5px; cursor:pointer; }
+  .action-btn.secondary{ background:transparent; color:var(--ink-navy); }
+  .action-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* --- party symbol chip --- */
+  .sym{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; padding:2px 7px 2px 5px; border-radius:10px; background:rgba(255,255,255,0.75); border:1px solid var(--line); white-space:nowrap; color:var(--text-muted); }
+  .sym .g{ font-size:13px; line-height:1; }
+  .sym.unverified{ border-style:dashed; color:var(--text-faint); background:transparent; }
+  .sym.unverified .g{ font-family:var(--mono); font-weight:700; color:var(--amber); }
+
+  /* --- cards --- */
+  .card{ border:1px solid var(--line); border-radius:4px; background:var(--paper-card); margin-bottom:10px; overflow:hidden; }
+  .card-row{ display:flex; align-items:flex-start; gap:11px; padding:12px; cursor:pointer; }
+  .ballot-badge{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:var(--ink-navy); color:var(--paper); font-family:var(--mono); font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .card-main{ flex:1; min-width:0; }
+  .card-name-row{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .card-name{ font-family:var(--serif); font-weight:600; font-size:15.5px; }
+  .winner-badge{ font-size:9.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; color:var(--stamp-red); border:1px solid var(--stamp-red); border-radius:9px; padding:1px 6px; }
+  .tag{ font-size:10px; font-weight:600; padding:2px 7px; border-radius:10px; color:#fff; white-space:nowrap; }
+  .tag-a{ background:var(--party-a);} .tag-b{ background:var(--party-b);} .tag-c{ background:var(--party-c);} .tag-ind{ background:var(--party-ind);}
+  .card-sub{ font-size:12px; color:var(--text-muted); margin-top:3px; }
+  .quick{ display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .qchip{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-family:var(--mono); color:var(--text-muted); }
+  .qchip .ic{ font-size:11px; }
+  .qchip.warn{ color:var(--stamp-red); font-weight:600; }
+  .qchip.ok{ color:var(--good); }
+  .qchip.unk{ color:var(--amber); }
+  .chev{ flex:0 0 auto; font-size:12px; color:var(--text-faint); transition:transform 0.15s ease; margin-top:4px; }
+  .card.expanded .chev{ transform:rotate(180deg); }
+  .detail{ display:none; border-top:1px solid var(--line); padding:4px 12px 14px; }
+  .card.expanded .detail{ display:block; }
+  .tabs{ display:flex; gap:4px; margin:10px 0 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .tab-btn{ background:none; border:none; cursor:pointer; font-family:var(--sans); font-size:12px; font-weight:500; color:var(--text-muted); padding:7px 4px; margin-right:12px; border-bottom:2px solid transparent; }
+  .tab-btn.active{ color:var(--text-ink); border-bottom-color:var(--stamp-red); }
+  .tab-panel{ display:none; font-size:13px; line-height:1.65; }
+  .tab-panel.active{ display:block; }
+  .kv{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(217,208,180,0.5); }
+  .kv:last-child{ border-bottom:none; }
+  .kv .k{ color:var(--text-muted); } .kv .v{ text-align:right; font-weight:500; }
+  .stamp{ float:right; width:60px; height:60px; border-radius:50%; border:2px solid var(--stamp-red); color:var(--stamp-red); display:flex; align-items:center; justify-content:center; text-align:center; font-family:var(--mono); font-size:8.5px; font-weight:600; transform:rotate(-9deg); opacity:0.82; margin:-4px 0 8px 10px; }
+  .note{ font-size:11.5px; color:var(--text-muted); margin-top:8px; line-height:1.55; padding-top:8px; border-top:1px dashed var(--line); }
+  .criminal-flag{ display:inline-block; font-size:11px; font-weight:600; padding:2px 7px; border-radius:3px; margin-bottom:6px; }
+  .flag-none{ background:rgba(92,110,79,0.15); color:var(--good); }
+  .flag-some{ background:rgba(166,54,44,0.12); color:var(--stamp-red); }
+  .flag-unknown{ background:rgba(138,106,31,0.12); color:var(--amber); }
+  .promise-group{ margin-bottom:12px; }
+  .promise-group h4{ font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-faint); margin:0 0 6px; font-weight:600; }
+  .src-tag{ font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; }
+  .src-link{ font-size:11px; margin-top:6px; } .src-link a{ color:var(--stamp-red); }
+  .bg-item{ margin-bottom:8px; }
+  .bg-item.flag{ border-left:3px solid var(--amber); padding-left:9px; background:rgba(138,106,31,0.07); border-radius:2px; padding-top:4px; padding-bottom:4px; }
+  .flag-label{ font-size:10px; font-weight:700; text-transform:uppercase; color:var(--amber); display:block; margin-bottom:2px; }
+  .news-card{ display:block; border:1px solid var(--line); border-radius:4px; padding:8px 10px; margin-bottom:7px; text-decoration:none; color:var(--text-ink); background:var(--paper-card); }
+  .news-card .nc-title{ font-size:12.5px; font-weight:600; line-height:1.4; }
+  .news-card .nc-domain{ font-size:10.5px; color:var(--text-faint); margin-top:2px; font-family:var(--mono); }
+  .keypoint{ display:flex; gap:8px; margin-bottom:9px; font-size:12.5px; line-height:1.55; }
+  .keypoint .kp-num{ flex:0 0 auto; width:17px; height:17px; border-radius:50%; background:var(--ink-navy); color:var(--paper); font-family:var(--mono); font-size:9.5px; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+
+  /* --- promise category chips --- */
+  .pcat{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 9px; border-radius:11px; background:rgba(255,255,255,0.7); border:1px solid var(--line); color:var(--text-muted); }
+  .pcat .pi{ font-size:12px; }
+  .plist-item{ display:flex; gap:8px; margin-bottom:8px; font-size:12.5px; line-height:1.55; }
+  .plist-item .bullet{ flex:0 0 auto; font-size:13px; margin-top:1px; }
+  .review-flag{ font-size:9.5px; font-family:var(--mono); color:var(--amber); border:1px solid rgba(138,106,31,0.4); border-radius:3px; padding:0 4px; margin-left:5px; white-space:nowrap; }
+
+  /* --- overlays / canvases --- */
+  .overlay{ display:none; position:fixed; inset:0; background:rgba(15,25,40,0.86); z-index:20; overflow-y:auto; padding:16px 10px 40px; }
+  .overlay.show{ display:block; }
+  .canvas{ background:var(--paper); border-radius:7px; border:1px solid var(--line); max-width:1180px; margin:0 auto; padding:18px 18px 24px; }
+  .canvas-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
+  .canvas h3{ font-family:var(--serif); margin:0; font-size:20px; }
+  .canvas .sub{ font-size:12px; color:var(--text-muted); margin:3px 0 0; line-height:1.55; }
+  .close-x{ background:var(--ink-navy); color:var(--paper); border:none; cursor:pointer; font-size:12px; padding:7px 12px; border-radius:5px; font-family:var(--sans); font-weight:600; flex:0 0 auto; }
+
+  /* --- matrix table --- */
+  .matrix-wrap{ overflow-x:auto; margin-top:14px; border:1px solid var(--line); border-radius:5px; background:var(--paper-card); }
+  table.matrix{ border-collapse:separate; border-spacing:0; font-size:12px; width:100%; min-width:900px; }
+  table.matrix th, table.matrix td{ text-align:left; padding:8px 9px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.matrix thead th{ position:sticky; top:0; background:var(--paper-dark); font-family:var(--sans); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap; z-index:2; }
+  table.matrix thead th:hover{ color:var(--text-ink); }
+  table.matrix thead th .arrow{ font-size:9px; margin-left:3px; color:var(--stamp-red); }
+  table.matrix tbody tr:hover{ background:rgba(255,255,255,0.55); }
+  table.matrix td.cname{ position:sticky; left:0; background:var(--paper-card); min-width:200px; z-index:1; border-right:1px solid var(--line); }
+  table.matrix tbody tr:hover td.cname{ background:#fff; }
+  table.matrix thead th.cname{ left:0; z-index:3; background:var(--paper-dark); }
+  .m-name{ font-family:var(--serif); font-weight:600; font-size:13px; display:block; }
+  .m-party{ font-size:10.5px; color:var(--text-muted); display:flex; align-items:center; gap:4px; margin-top:2px; }
+  .m-missing{ color:var(--text-faint); font-style:italic; font-size:11px; }
+  .crime-dots{ display:inline-flex; gap:2px; align-items:center; }
+  .crime-dot{ width:7px; height:7px; border-radius:50%; background:var(--stamp-red); }
+  .crime-zero{ color:var(--good); font-size:11px; font-weight:600; }
+  .crime-unk{ color:var(--amber); font-size:11px; font-family:var(--mono); }
+  .abar{ display:block; height:7px; background:var(--paper-dark); border-radius:4px; overflow:hidden; margin-top:3px; min-width:60px; }
+  .abar > i{ display:block; height:100%; background:var(--party-b); border-radius:4px; }
+  .amt{ font-family:var(--mono); font-size:11px; white-space:nowrap; }
+  .edu-pips{ display:inline-flex; gap:2px; }
+  .edu-pip{ width:5px; height:11px; border-radius:1px; background:var(--paper-dark); }
+  .edu-pip.on{ background:var(--party-c); }
+
+  /* --- promise canvas --- */
+  .cat-bar{ display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
+  .cat-btn{ display:inline-flex; align-items:center; gap:5px; font-family:var(--sans); font-size:11.5px; font-weight:600; padding:6px 11px; border-radius:14px; border:1px solid var(--line); background:var(--paper-card); color:var(--text-muted); cursor:pointer; }
+  .cat-btn.active{ background:var(--ink-navy); color:var(--paper); border-color:var(--ink-navy); }
+  .cat-btn .cnt{ font-family:var(--mono); font-size:10px; opacity:0.75; }
+  .cat-blurb{ font-size:11.5px; color:var(--text-muted); margin:10px 0 2px; font-style:italic; }
+  .pcols{ display:grid; gap:12px; margin-top:12px; grid-template-columns:repeat(auto-fit,minmax(255px,1fr)); }
+  .pcol{ border:1px solid var(--line); border-radius:5px; background:var(--paper-card); padding:11px 12px; }
+  .pcol h5{ margin:0 0 3px; font-family:var(--serif); font-size:13.5px; font-weight:600; }
+  .pcol .pc-party{ font-size:10.5px; color:var(--text-muted); display:flex; align-items:center; gap:5px; margin-bottom:8px; flex-wrap:wrap; }
+  .pcol .none{ font-size:11.5px; color:var(--text-faint); font-style:italic; line-height:1.5; }
+  .legend-row{ display:flex; gap:14px; flex-wrap:wrap; font-size:10.5px; color:var(--text-muted); margin-top:10px; align-items:center; }
+  .legend-row span{ display:inline-flex; align-items:center; gap:4px; }
+  .disclaimer-note{ font-size:11px; color:var(--text-muted); background:rgba(166,54,44,0.06); border:1px solid rgba(166,54,44,0.2); border-radius:4px; padding:8px 10px; margin:12px 0 0; line-height:1.55; }
+  footer.foot{ margin-top:18px; font-size:11px; color:var(--text-faint); line-height:1.6; text-align:center; }
+  footer.foot a{ color:var(--text-faint); }
+
+  @media (max-width:560px){
+    body{ padding:16px 8px 40px; }
+    .app{ padding:22px 16px 18px; }
+    .canvas{ padding:14px 12px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="app">
+    <header>
+      <p class="wordmark">Halka</p>
+      <p class="tagline">Know who's on your ballot, before you mark it.</p>
+      <button class="about-toggle" onclick="toggleAbout()">About this data</button>
+      <div class="about-panel" id="aboutPanel">
+        Credentials and declarations come from candidates' self-sworn ECI affidavits, via
+        <a href="https://www.myneta.info/" target="_blank" rel="noopener">ADR / MyNeta</a>, fetched by this
+        project's own scraper and carrying a source link per candidate. <b>Party symbols</b> are shown only where
+        the ECI reserves that symbol for that party; unrecognised parties and independents get a free symbol
+        allotted per constituency, so those show as unconfirmed rather than guessed &mdash; check your ballot.
+        <b>Promises</b> are auto-sorted into categories by a keyword classifier whose low-confidence guesses are
+        flagged for review, never silently accepted. The <b>compare</b> tools rank nothing for you: the matrix
+        sorts on whichever column you pick, and no single "best candidate" score is computed anywhere in this app.
+      </div>
+    </header>
+
+    <div class="banner" id="topBanner">Real data — sourced from ECI affidavits via ADR/MyNeta. A declared criminal case is a charge, not a conviction.</div>
+
+    <div>
+      <label class="field-label" for="halkaSelect">Search your constituency (halka)</label>
+      <select id="halkaSelect" onchange="onHalkaChange(this.value)">
+        <option value="">Choose a constituency…</option>
+        <option value="digha">Digha (Patna), Bihar — 2025 election, concluded</option>
+        <option value="bankipur">Bankipur (Patna), Bihar — bypoll, voting 30 Jul 2026</option>
+        <option value="datia">Datia, Madhya Pradesh — bypoll, voting 30 Jul 2026</option>
+        <option value="other">Any other constituency — not loaded in this demo</option>
+      </select>
+    </div>
+
+    <div id="resultArea"></div>
+
+    <footer class="foot">
+      Sources: <a href="https://www.myneta.info/" target="_blank" rel="noopener">ECI affidavit archive via ADR/MyNeta</a>,
+      plus the news outlets cited per candidate.
+    </footer>
+  </div>
+</div>
+
+<div class="overlay" id="matrixOverlay">
+  <div class="canvas">
+    <div class="canvas-head">
+      <div>
+        <h3>All candidates, side by side</h3>
+        <p class="sub" id="matrixSub"></p>
+      </div>
+      <button class="close-x" onclick="closeCanvas('matrixOverlay')">Close ✕</button>
+    </div>
+    <div id="matrixContent"></div>
+  </div>
+</div>
+
+<div class="overlay" id="promiseOverlay">
+  <div class="canvas">
+    <div class="canvas-head">
+      <div>
+        <h3>Promises, by category</h3>
+        <p class="sub" id="promiseSub"></p>
+      </div>
+      <button class="close-x" onclick="closeCanvas('promiseOverlay')">Close ✕</button>
+    </div>
+    <div id="promiseContent"></div>
+  </div>
+</div>
+
+<script>
+/* party_symbols.js
+ *
+ * ECI-allotted election symbols, for showing voters the mark they will actually
+ * look for on the EVM.
+ *
+ * WHY THIS FILE IS CAUTIOUS
+ * -------------------------
+ * A wrong symbol here is the most dangerous error this whole project could
+ * make. Every other field — age, education, assets — is information a voter
+ * weighs. The symbol is the thing they physically press. Showing a lotus next
+ * to the wrong candidate could cause a real misvote, so this file never
+ * guesses: a party either has a verified symbol or is explicitly marked
+ * unverified, and the UI renders that difference plainly.
+ *
+ * WHAT "VERIFIED" MEANS HERE
+ * --------------------------
+ * The symbol is RESERVED for that party by the ECI nationally or in the
+ * relevant state, and was confirmed against reporting or ECI-derived sources
+ * during this project's research (2026-07-26). Reserved symbols are stable
+ * across elections, which is what makes them safe to hard-code.
+ *
+ * WHAT IS DELIBERATELY NOT HERE
+ * -----------------------------
+ * Registered-but-unrecognised parties and independents do NOT have reserved
+ * symbols. They are allotted a "free symbol" per election, per constituency,
+ * from the ECI's free-symbols list — so the same party can carry different
+ * symbols in different seats, and an independent's symbol is specific to that
+ * one contest. Hard-coding those would be inventing facts. They resolve to
+ * UNVERIFIED, and the UI tells the voter to check their ballot.
+ *
+ * ON THE GLYPHS
+ * -------------
+ * The emoji is an ILLUSTRATION, not the ballot artwork. Some are exact (lotus,
+ * elephant, school bag, clock); others are approximations (the RJD's hurricane
+ * lantern is not the same object as a red paper lantern). So the symbol's
+ * OFFICIAL NAME is always rendered alongside the glyph, and the name — not the
+ * picture — is the authoritative part. That ordering is deliberate: a voter who
+ * reads "Lantern" and sees a lantern-ish glyph is correctly informed; one who
+ * sees only an approximate picture might not be.
+ */
+
+const SYMBOL_UNVERIFIED = {
+  name: null,
+  glyph: "?",
+  verified: false,
+  note: "Symbol not confirmed for this party. Unrecognised parties and independents " +
+        "are allotted a free symbol per constituency, so it can differ by seat — " +
+        "check the ballot or the ECI candidate list for this constituency."
+};
+
+const PARTY_SYMBOLS = {
+  // --- National parties: symbols reserved nationwide ---
+  "BJP": {
+    name: "Lotus", glyph: "🪷", verified: true,
+    fullName: "Bharatiya Janata Party",
+    source: "ECI reserved symbol (national party)"
+  },
+  "INC": {
+    name: "Hand", glyph: "✋", verified: true,
+    fullName: "Indian National Congress",
+    source: "ECI reserved symbol (national party)"
+  },
+  "BSP": {
+    name: "Elephant", glyph: "🐘", verified: true,
+    fullName: "Bahujan Samaj Party",
+    source: "ECI reserved symbol (national party)"
+  },
+  "CPI": {
+    name: "Ears of Corn and Sickle", glyph: "🌾", verified: true,
+    fullName: "Communist Party of India",
+    source: "ECI reserved symbol (national party)"
+  },
+  "CPI(M)": {
+    name: "Hammer, Sickle and Star", glyph: "☭", verified: true,
+    fullName: "Communist Party of India (Marxist)",
+    source: "ECI reserved symbol (national party)"
+  },
+  "NCP": {
+    name: "Clock", glyph: "🕐", verified: true,
+    fullName: "Nationalist Congress Party",
+    source: "ECI reserved symbol (national party)"
+  },
+  "AITC": {
+    name: "Flower and Grass", glyph: "🌿", verified: true,
+    fullName: "All India Trinamool Congress",
+    source: "ECI reserved symbol (national party)"
+  },
+
+  // --- State parties: reserved in the relevant state ---
+  "RJD": {
+    name: "Hurricane Lamp (Lantern)", glyph: "🏮", verified: true,
+    fullName: "Rashtriya Janata Dal",
+    source: "ECI reserved symbol (state party, Bihar & Jharkhand)",
+    glyphCaveat: "Glyph is an approximation — the ballot symbol is a hurricane lamp."
+  },
+  "JDU": {
+    name: "Arrow", glyph: "⬆️", verified: true,
+    fullName: "Janata Dal (United)",
+    source: "ECI reserved symbol (state party, Bihar)"
+  },
+  "CPI(ML)(L)": {
+    name: "Flag with Three Stars", glyph: "🚩", verified: true,
+    fullName: "Communist Party of India (Marxist–Leninist) Liberation",
+    source: "ECI reserved symbol; contested on this symbol in Bihar & Jharkhand since 2019",
+    glyphCaveat: "Glyph is an approximation — the ballot symbol is a flag bearing three stars."
+  },
+
+  // --- Registered party with a symbol allotted for this election cycle ---
+  "Jan Suraaj Party": {
+    name: "School Bag", glyph: "🎒", verified: true,
+    fullName: "Jan Suraaj Party",
+    source: "Allotted by the ECI for the Bihar 2025 assembly election",
+    glyphCaveat: "Allotted for Bihar 2025 — a newly registered party's symbol is not " +
+                 "reserved permanently and can change between elections."
+  }
+
+  // Everything below appears in this dataset but has NO confirmed symbol, and
+  // is intentionally absent so it resolves to SYMBOL_UNVERIFIED rather than a
+  // plausible-looking guess:
+  //   Bharatiya Gan Warta Party, Bharatiya Momin Front, Jagrook Janta Party,
+  //   Rashtriya Jansambhavna Party, Rashtriya Lok Janshakti Party,
+  //   Right to Recall Party, The Plurals Party, Vocal India Party,
+  //   Independent (free symbol, allotted per candidate per seat)
+};
+
+/* Resolve a party name to its symbol record. Matching is exact-then-normalised
+ * rather than fuzzy: a fuzzy match that turns "Rashtriya Lok Janshakti Party"
+ * into "Rashtriya Janata Dal" would attach the wrong ballot symbol to a real
+ * candidate, which is precisely the failure this file exists to prevent. */
+function partySymbol(party) {
+  if (!party) return SYMBOL_UNVERIFIED;
+  if (PARTY_SYMBOLS[party]) return PARTY_SYMBOLS[party];
+  const norm = String(party).trim().toUpperCase().replace(/[\s.]/g, "");
+  for (const key of Object.keys(PARTY_SYMBOLS)) {
+    if (key.toUpperCase().replace(/[\s.]/g, "") === norm) return PARTY_SYMBOLS[key];
+  }
+  return SYMBOL_UNVERIFIED;
+}
+
+
+const PROMISE_CATEGORIES = [
+  {
+    "key": "jobs",
+    "label": "Jobs & employment",
+    "blurb": "Government jobs, private-sector employment, unemployment allowance, skills training.",
+    "icon": "💼"
+  },
+  {
+    "key": "education",
+    "label": "Education",
+    "blurb": "Schools, colleges, teachers, scholarships, fees, exam reform.",
+    "icon": "📚"
+  },
+  {
+    "key": "health",
+    "label": "Health & healthcare",
+    "blurb": "Hospitals, doctors, insurance, medicines, maternal and child health.",
+    "icon": "🏥"
+  },
+  {
+    "key": "women",
+    "label": "Women & child welfare",
+    "blurb": "Cash transfers to women, safety, reservation for women, childcare, girl-child schemes.",
+    "icon": "👩"
+  },
+  {
+    "key": "agriculture",
+    "label": "Farmers & agriculture",
+    "blurb": "MSP, loan waivers, irrigation, crop insurance, fertiliser, mandis.",
+    "icon": "🌾"
+  },
+  {
+    "key": "infrastructure",
+    "label": "Roads, power & water",
+    "blurb": "Roads, bridges, electricity, drinking water, sanitation, transport.",
+    "icon": "🛣️"
+  },
+  {
+    "key": "housing",
+    "label": "Housing & land",
+    "blurb": "Housing schemes, land titles, slum redevelopment, homestead land.",
+    "icon": "🏠"
+  },
+  {
+    "key": "welfare",
+    "label": "Welfare & cash support",
+    "blurb": "Pensions, direct cash transfers, rations, subsidies for the poor and elderly.",
+    "icon": "🤝"
+  },
+  {
+    "key": "social_justice",
+    "label": "Reservation & social justice",
+    "blurb": "Caste and community reservation, SC/ST/OBC/EBC welfare, minority rights.",
+    "icon": "⚖️"
+  },
+  {
+    "key": "economy",
+    "label": "Industry & economy",
+    "blurb": "Industrial parks, investment, trade, small business, tourism, taxes.",
+    "icon": "🏭"
+  },
+  {
+    "key": "law_order",
+    "label": "Law, order & safety",
+    "blurb": "Policing, crime, women's safety enforcement, courts, communal harmony.",
+    "icon": "🛡️"
+  },
+  {
+    "key": "governance",
+    "label": "Governance & corruption",
+    "blurb": "Anti-corruption, transparency, service delivery, decentralisation, e-governance.",
+    "icon": "🏛️"
+  },
+  {
+    "key": "prohibition",
+    "label": "Liquor & prohibition",
+    "blurb": "Alcohol bans, lifting or reviewing prohibition, related enforcement.",
+    "icon": "🚫"
+  },
+  {
+    "key": "environment",
+    "label": "Environment & climate",
+    "blurb": "Pollution, rivers, forests, flooding, climate resilience, clean energy.",
+    "icon": "🌱"
+  },
+  {
+    "key": "misc",
+    "label": "Other promises",
+    "blurb": "Real pledges that don't fit the categories above — kept visible rather than forced.",
+    "icon": "📌"
+  }
+];
+
+const CATEGORIZED_PROMISES = {
+  "NDA": [
+    {
+      "text": "1 crore jobs pledged over five years (NDA “Sankalp Patra,” released 31 Oct 2025)",
+      "category": "jobs",
+      "confidence": 0.625,
+      "matched": [
+        "jobs"
+      ],
+      "alternatives": [],
+      "needsReview": false
+    },
+    {
+      "text": "₹10 lakh assistance for Extremely Backward Classes, plus an EBC commission led by a retired Supreme Court judge",
+      "category": "social_justice",
+      "confidence": 0.125,
+      "matched": [
+        "ebc"
+      ],
+      "alternatives": [
+        "law_order"
+      ],
+      "needsReview": true
+    },
+    {
+      "text": "10 new industrial parks / factories in every district",
+      "category": "economy",
+      "confidence": 0.625,
+      "matched": [
+        "industr*"
+      ],
+      "alternatives": [],
+      "needsReview": false
+    },
+    {
+      "text": "1 crore women to become “Lakhpati Didi”",
+      "category": "women",
+      "confidence": 0.875,
+      "matched": [
+        "lakhpati",
+        "women",
+        "didi"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "1 crore women to become “Lakhpati Didi”; free electricity up to 125 units; 50 lakh new houses"
+    },
+    {
+      "text": "free electricity up to 125 units",
+      "category": "welfare",
+      "confidence": 0.5,
+      "matched": [
+        "free electricity"
+      ],
+      "alternatives": [
+        "infrastructure"
+      ],
+      "needsReview": true,
+      "source_text": "1 crore women to become “Lakhpati Didi”; free electricity up to 125 units; 50 lakh new houses"
+    },
+    {
+      "text": "50 lakh new houses",
+      "category": "housing",
+      "confidence": 0.625,
+      "matched": [
+        "house"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "1 crore women to become “Lakhpati Didi”; free electricity up to 125 units; 50 lakh new houses"
+    }
+  ],
+  "MGB": [
+    {
+      "text": "Government job for one member of every family — law promised within 20 days of forming government (“Bihar Ka Tejashwi Pran,” released 28 Oct 2025)",
+      "category": "jobs",
+      "confidence": 0.625,
+      "matched": [
+        "job"
+      ],
+      "alternatives": [],
+      "needsReview": false
+    },
+    {
+      "text": "₹2,500/month to women under the Mai-Behin Maan Yojana",
+      "category": "women",
+      "confidence": 0.5,
+      "matched": [
+        "women",
+        "behin"
+      ],
+      "alternatives": [
+        "welfare"
+      ],
+      "needsReview": true
+    },
+    {
+      "text": "Reservation raised to 60%",
+      "category": "social_justice",
+      "confidence": 0.625,
+      "matched": [
+        "reservation*"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Reservation raised to 60%; Old Pension Scheme restored"
+    },
+    {
+      "text": "Old Pension Scheme restored",
+      "category": "welfare",
+      "confidence": 0.875,
+      "matched": [
+        "old pension scheme"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Reservation raised to 60%; Old Pension Scheme restored"
+    },
+    {
+      "text": "Liquor prohibition law to be reviewed",
+      "category": "prohibition",
+      "confidence": 0.75,
+      "matched": [
+        "prohibition",
+        "liquor"
+      ],
+      "alternatives": [],
+      "needsReview": false
+    }
+  ],
+  "JANSURAAJ": [
+    {
+      "text": "No formal manifesto released before the 2025 poll — founder Prashant Kishor instead set out a public agenda",
+      "category": "misc",
+      "confidence": 0.0,
+      "matched": [],
+      "alternatives": [],
+      "needsReview": true
+    },
+    {
+      "text": "Education and employment named as top priority",
+      "category": "jobs",
+      "confidence": 0.125,
+      "matched": [
+        "employment"
+      ],
+      "alternatives": [
+        "education"
+      ],
+      "needsReview": true,
+      "source_text": "Education and employment named as top priority; pension expansion"
+    },
+    {
+      "text": "pension expansion",
+      "category": "welfare",
+      "confidence": 0.625,
+      "matched": [
+        "pension"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Education and employment named as top priority; pension expansion"
+    },
+    {
+      "text": "Soft loans / self-employment support for women",
+      "category": "jobs",
+      "confidence": 0.125,
+      "matched": [
+        "self-employment"
+      ],
+      "alternatives": [
+        "women"
+      ],
+      "needsReview": true,
+      "source_text": "Soft loans / self-employment support for women; land reforms"
+    },
+    {
+      "text": "land reforms",
+      "category": "housing",
+      "confidence": 0.75,
+      "matched": [
+        "land reform"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Soft loans / self-employment support for women; land reforms"
+    },
+    {
+      "text": "Liquor ban to be lifted",
+      "category": "prohibition",
+      "confidence": 0.625,
+      "matched": [
+        "liquor"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Liquor ban to be lifted; public hospitals made functional"
+    },
+    {
+      "text": "public hospitals made functional",
+      "category": "health",
+      "confidence": 0.625,
+      "matched": [
+        "hospital"
+      ],
+      "alternatives": [],
+      "needsReview": false,
+      "source_text": "Liquor ban to be lifted; public hospitals made functional"
+    }
+  ]
+};
+
+
+const NOT_RESEARCHED_NOTE = "News research hasn't been run for this candidate yet. This is different from having checked and found nothing — at full scale this step has to run for every candidate in every constituency.";
+const NO_COVERAGE_NOTE = "Searched, and no independent news coverage turned up for this candidate beyond the ECI affidavit record — typical for down-ballot candidates.";
+
+const dighaCandidates = [
+  {
+    id:1, sno:10, winner:true, name:"Sanjiv Chaurasia", party:"BJP", tag:"tag-a",
+    age:56, education:"Doctorate \u2014 Ph.D, Ranchi University (2006); MBA, Patna University (1996); M.Com, Patna University (1993)",
+    eduLevel:6, terms:3,
+    profession:"MLA salary; Assistant Professor, S.S. Memorial College Ranchi (on lien)",
+    criminalCount:3, criminalNote:"3 cases declared, all shown as pending trial in the affidavit \u2014 none listed as convicted. They relate to alleged offences including unlawful assembly, rioting, wrongful restraint/confinement and criminal intimidation, from three separate FIRs filed in Patna between 2015 and 2020; one has a revision appeal pending.",
+    assets:"\u20b922,48,28,000 (~22 Crore+)", liabilities:"Nil",
+    assetHistory:"Declared assets in his last two affidavits: \u20b97.73 Crore+ (Bihar 2020), \u20b95.33 Crore+ (Bihar 2015).",
+    manifestoKey:"NDA", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=179",
+    newsStatus:"researched",
+    background:[
+      {text:"Son of Ganga Prasad, a veteran BJP leader and former Governor of Sikkim and Meghalaya."},
+      {text:"Has represented Digha since 2015 \u2014 2025 is his third consecutive term, all three as the BJP nominee, each time defeating a CPI(ML)L challenger."},
+      {text:"Declared assets rose from about \u20b95.33 crore (2015 affidavit) to \u20b97.73 crore (2020) to \u20b922.48 crore (2025) across his three candidacies."},
+      {text:"His own campaign website lists local development work funded through his MLA Area Development Fund \u2014 drinking-water handpumps in Gurdanibagh/Bhikhachak Chamartoli and road-paving in Ward 22B and Rukanpura. This is self-reported by the candidate on his own site, not independently verified.", flag:true, flagLabel:"Self-reported, unverified"}
+    ],
+    newsLinks:[
+      {title:"Political buzz in Patna: Can Sushant Singh Rajput's cousin unseat BJP's Sanjeev Chaurasia in Digha?", domain:"The Week", url:"https://www.theweek.in/news/india/2025/10/14/political-buzz-in-patna-can-sushant-singh-rajput-s-cousin-unseat-bjp-s-sanjeev-chaurasia-in-digha.html"},
+      {title:"Sanjiv Chaurasiya", domain:"Wikipedia", url:"https://en.wikipedia.org/wiki/Sanjiv_Chaurasiya"},
+      {title:"Digha constituency results 2025", domain:"India TV News", url:"https://www.indiatvnews.com/bihar/news-bihar-news-digha-constituency-bihar-assembly-election-results-2025-live-updates-leading-trailing-candidates-sanjiv-chaurasia-and-divya-gautam-2025-11-14-1016764"}
+    ]
+  },
+  {
+    id:2, sno:1, winner:false, name:"Divya Gautam", party:"CPI(ML)(L)", tag:"tag-b",
+    age:33, education:"Post Graduate \u2014 M.A. Women's Studies, TISS Hyderabad (2016); Masters, Journalism & Mass Comm, Nalanda Open University (2018)",
+    eduLevel:5, terms:0,
+    profession:"Visiting faculty, Patna College, Patna",
+    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled for this demo \u2014 see the source link for the full record.",
+    assets:"\u20b992,26,869 (~92 Lakh+)", liabilities:"Nil", assetHistory:null,
+    manifestoKey:"MGB", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=180",
+    newsStatus:"researched",
+    background:[
+      {text:"Maternal cousin of the late actor Sushant Singh Rajput, whose family was from the Rajeev Nagar area within Digha's limits \u2014 a connection ground reporters say she has deliberately avoided leveraging on the campaign trail."},
+      {text:"Long active in student politics: contested the Patna University Students' Union election in 2012 with AISA (CPI-ML's student wing), narrowly losing to an ABVP candidate."},
+      {text:"Sources disagree on one detail: Wikipedia and a Deccan Herald report say she cleared the BPSC exam and qualified as a Supply Inspector but chose not to join government service; a separate Indiablooms report says she did join the post before later resigning to focus on activism. This demo hasn't independently resolved which is accurate.", flag:true, flagLabel:"Sources disagree"},
+      {text:"Worked as an assistant professor at Patna Women's College before contesting."}
+    ],
+    newsLinks:[
+      {title:"In Digha, Divya Gautam shuns Sushant Singh Rajput link", domain:"Deccan Herald", url:"https://www.deccanherald.com/amp/story/elections%2Fbihar%2Fin-digha-divya-shuns-sushant-link-3786677"},
+      {title:"Sushant Singh Rajput's cousin Divya Gautam to contest Bihar polls", domain:"Indiablooms", url:"https://www.indiablooms.com/phoenix/public/news/sushant-singh-rajputs-cousin-divya-gautam-to-contest-bihar-polls-as-cpiml-candidate-from-digha/details"},
+      {title:"Divya Gautam, Sushant Singh Rajput's Cousin, Promises 'Real Change'", domain:"ETV Bharat", url:"https://www.etvbharat.com/en/state/bihar-assembly-polls-2025-divya-gautam-sushant-singh-rajputs-cousin-enters-politics-to-challenge-bjps-sanjeev-chaurasia-in-digha-enn25110200710"},
+      {title:"Divya Gautam", domain:"Wikipedia", url:"https://en.wikipedia.org/wiki/Divya_Gautam"}
+    ]
+  },
+  {
+    id:3, sno:2, winner:false, name:"Indu Devi", party:"Bharatiya Momin Front", tag:"tag-c",
+    age:28, education:"8th pass", eduLevel:1, terms:0, profession:"Not listed in this data pull",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"\u20b94,08,683 (~4 Lakh+)", liabilities:"Nil", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=26",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  },
+  {
+    id:4, sno:3, winner:false, name:"Kusumlata Verma", party:"Independent", tag:"tag-ind",
+    age:56, education:"Post Graduate (1992) + LLB (1995), Magadh University", eduLevel:5, terms:0,
+    profession:"Social worker, LIC agent",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"Not available in this data pull", liabilities:"Not available in this data pull", assetHistory:null,
+    manifestoKey:null, manifestoNote:"Contesting as an independent \u2014 no party manifesto.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1311",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  },
+  {
+    id:5, sno:4, winner:false, name:"Prabhakar Kumar Singh", party:"BSP", tag:"tag-c",
+    age:61, education:"Graduate \u2014 B.Sc, BS College, Magadh University (1984)", eduLevel:4, terms:0,
+    profession:"Retired state government servant",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"\u20b914,67,44,426 (~14 Crore+)", liabilities:"\u20b961,28,907 (~61 Lakh+)", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for BSP in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=182",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  },
+  {
+    id:6, sno:5, winner:false, name:"Pranjal Singh", party:"The Plurals Party", tag:"tag-c",
+    age:29, education:"Post Graduate", eduLevel:5, terms:0, profession:"Not listed in this data pull",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"\u20b94,40,549 (~4 Lakh+)", liabilities:"Nil", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=545",
+    newsStatus:"no-coverage",
+    background:[{text:"No individual coverage of Pranjal Singh turned up, but the party itself has a public record: The Plurals Party was founded in March 2020 by Pushpam Priya Choudhary, a London School of Economics alumna who declared herself a Chief Ministerial candidate; the party has never won a seat, and Choudhary herself polled fewer votes than NOTA in one of her two 2020 seats."}],
+    newsLinks:[{title:"Bihar CM aspirant Pushpam Priya loses both seats, gets fewer votes than NOTA", domain:"Tribune India", url:"https://www.tribuneindia.com/news/nation/bihar-cm-aspirant-pushpam-priya-lost-both-seats-gets-less-votes-than-nota-169219"}]
+  },
+  {
+    id:7, sno:6, winner:false, name:"Rajiv Kumar Singh", party:"Right to Recall Party", tag:"tag-c",
+    age:54, education:"Graduate", eduLevel:4, terms:0, profession:"Not listed in this data pull",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"Not available in this data pull", liabilities:"Not available in this data pull", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1319",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  },
+  {
+    id:8, sno:7, winner:false, name:"Richa Sinha", party:"Vocal India Party", tag:"tag-c",
+    age:41, education:"Post Graduate \u2014 M.Tech, NIT Jamshedpur (2011)", eduLevel:5, terms:0, profession:"Business",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"\u20b966,45,400 (~66 Lakh+)", liabilities:"Nil", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1316",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  },
+  {
+    id:9, sno:8, winner:false, name:"Ritesh Ranjan Singh", party:"Jan Suraaj Party", tag:"tag-c",
+    age:52, education:"Graduate", eduLevel:4, terms:0, profession:"Not listed in this data pull",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"\u20b935,78,53,346 (~35 Crore+)", liabilities:"\u20b940,33,603 (~40 Lakh+)", assetHistory:null,
+    manifestoKey:"JANSURAAJ", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=181",
+    newsStatus:"researched",
+    background:[
+      {text:"Known locally as \u201cBittu Singh\u201d; contested Digha as a first-time candidate for Jan Suraaj Party, finishing third."},
+      {text:"In July 2026, after the Digha loss, he left Jan Suraaj and joined the BJP \u2014 shortly before the Bankipur bypoll in which Jan Suraaj founder Prashant Kishor is himself a candidate. He publicly apologised for joining Jan Suraaj \u201cin the heat of the moment.\u201d"}
+    ],
+    newsLinks:[
+      {title:"How Jan Suraaj's KC Sinha and Bittu Singh joining BJP redefines the Bankipur bypoll", domain:"India TV News", url:"https://www.indiatvnews.com/bihar/news-how-jan-suraaj-s-kc-sinha-and-bittu-singh-joining-bjp-redefines-the-bankipur-bypoll-for-prashant-kishor-2026-07-15-1048363"}
+    ]
+  },
+  {
+    id:10, sno:9, winner:false, name:"Sadhana Kumari", party:"Jagrook Janta Party", tag:"tag-c",
+    age:46, education:"12th pass \u2014 Inter, Bihar Board (1994)", eduLevel:2, terms:0,
+    profession:"Customer care centre",
+    criminalCount:0, criminalNote:"No pending criminal cases declared.",
+    assets:"Not available in this data pull", liabilities:"Not available in this data pull", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party in this election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1313",
+    newsStatus:"no-coverage",
+    background:[{text:"Enrolled as a voter in the neighbouring Phulwari constituency, not Digha itself \u2014 permitted under nomination rules, but worth knowing when weighing how rooted a candidate is in the seat they're contesting."}],
+    newsLinks:[]
+  },
+  {
+    id:11, sno:11, winner:false, name:"Shwet Ranjan", party:"Independent", tag:"tag-ind",
+    age:31, education:"Graduate Professional", eduLevel:4, terms:0, profession:"Not listed in this data pull",
+    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled for this demo \u2014 see the source link for the full record.",
+    assets:"\u20b975,972 (~75 Thousand+)", liabilities:"Nil", assetHistory:null,
+    manifestoKey:null, manifestoNote:"Contesting as an independent \u2014 no party manifesto.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1314",
+    newsStatus:"no-coverage", background:[], newsLinks:[]
+  }
+];
+dighaCandidates.sort((a,b)=>a.sno-b.sno);
+
+const bankipurCandidates = [
+  {
+    "id": 300,
+    "sno": 1,
+    "winner": false,
+    "name": "Upendra Sahani",
+    "party": "Rashtriya Jansambhavna Party",
+    "tag": "tag-c",
+    "age": 55,
+    "education": "Graduate Matric - Bihar School Examination Board (BSEB) - 1988 - 1st Division, I.Sc. - BSEB - 1990 - 2nd Division, BA (Economics) - Muzaffarpur University, Muzaffarpur - 1993 - 2nd Division.",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Business",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 10,41,38,000 ~10 Crore+",
+    "liabilities": "Rs 6,50,000 ~6 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2949",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 301,
+    "sno": 2,
+    "winner": false,
+    "name": "Niranjan Kumar Acharya",
+    "party": "Right to Recall Party",
+    "tag": "tag-c",
+    "age": 48,
+    "education": "12th Pass Inter Pass out from Inter council Bihar, Year 1994, Dhanraj Singh college, Jamui",
+    "eduLevel": 3,
+    "terms": 0,
+    "profession": "SELF EMPLOYED",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 1,00,000 ~1 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2950",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 302,
+    "sno": 3,
+    "winner": false,
+    "name": "Tanvir Alam",
+    "party": "Rashtriya Lok Janshakti Party",
+    "tag": "tag-c",
+    "age": 45,
+    "education": "Graduate B.A. from Periyar University in 2018",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Social Activist & Businessman",
+    "criminalCount": 4,
+    "criminalNote": "4 case(s) declared as pending in the affidavit. A declared case is a charge, not a conviction — see the source link for the full record.",
+    "assets": "Rs 40,36,675 ~40 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2952",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    id:103, sno:4, winner:false, name:"Rekha Gupta", party:"RJD", tag:"tag-b",
+    age:46, education:"Graduate \u2014 B.A., Ram Narayan Memorial College (Vinoba Bhave University), Hazaribagh (2000)", eduLevel:5, terms:0,
+    profession:"Businesswoman",
+    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled in this pass \u2014 see the source link for the full record.",
+    assets:"Not available in this pull", liabilities:"Not available in this pull", assetHistory:null,
+    manifestoKey:"MGB", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2954",
+    newsStatus:"researched",
+    background:[
+      {text:"Named as the RJD (Mahagathbandhan) candidate for the Bankipur bypoll."},
+      {text:"Her MyNeta affidavit, indexed after the initial news-cycle reporting on her candidacy, lists her legal name as \u201cRekha Kumari\u201d \u2014 every news source used in this app's research calls her Rekha Gupta. Both are shown here rather than silently picking one; the affidavit is the authoritative legal document.", flag:true, flagLabel:"Affidavit name differs from news coverage"}
+    ],
+    newsLinks:[
+      {title:"BJP fields Neeraj Kumar Sinha in Bankipur bypoll (confirms RJD's Rekha Gupta)", domain:"India TV News", url:"https://www.indiatvnews.com/bihar/news-bjp-fields-neeraj-kumar-sinha-in-bankipur-assembly-bypoll-after-candidate-abhishek-sinha-pulls-out-of-race-2026-07-10-1047838"},
+      {title:"Bihar: BJP fields Neeraj Kumar Sinha for Bankipur bypoll after Abhishek Bunty withdraws", domain:"Prokerala", url:"https://www.prokerala.com/news/articles/a1786392.html"}
+    ]
+  },
+  {
+    "id": 303,
+    "sno": 5,
+    "winner": false,
+    "name": "Anil Das",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 41,
+    "education": "Literate Literate",
+    "eduLevel": 1,
+    "terms": 0,
+    "profession": "Labour",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 19,70,000 ~19 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2955",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 304,
+    "sno": 6,
+    "winner": false,
+    "name": "Mirtunjay Kumar",
+    "party": "Rashtriya Samajhit Dal",
+    "tag": "tag-c",
+    "age": 30,
+    "education": "Graduate Graduate from SSSGS College, Arwal, Magadh University, Bodh Gaya in 2017",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Private Tution",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 50,500 ~50 Thou+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2957",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 305,
+    "sno": 7,
+    "winner": false,
+    "name": "Rambabu Prasad",
+    "party": "Rashtriya Garib Dal",
+    "tag": "tag-c",
+    "age": 49,
+    "education": "10th Pass Matric from Bihar Vidyalaya ExaminationCouncil, Patna in 1990",
+    "eduLevel": 2,
+    "terms": 0,
+    "profession": "Labour",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 15,611 ~15 Thou+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2958",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 306,
+    "sno": 8,
+    "winner": false,
+    "name": "Suraj Kumar Yadav",
+    "party": "Peoples Party of India (Democratic)",
+    "tag": "tag-c",
+    "age": 29,
+    "education": "Graduate B.Sc., Physics (Hons) from Magadh University, Gaya, Bihar in 2017",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Business",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 19,06,000 ~19 Lacs+",
+    "liabilities": "Rs 4,71,000 ~4 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2959",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 307,
+    "sno": 9,
+    "winner": false,
+    "name": "Brajesh Patel",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 49,
+    "education": "Illiterate NIL",
+    "eduLevel": 1,
+    "terms": 0,
+    "profession": "Agriculture",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 60,47,200 ~60 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2960",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 308,
+    "sno": 10,
+    "winner": false,
+    "name": "Ashok Kumar",
+    "party": "Samata Party",
+    "tag": "tag-c",
+    "age": 51,
+    "education": "10th Pass Matric (10th) from Bihar Vidyalay Exam Council in 1989",
+    "eduLevel": 2,
+    "terms": 0,
+    "profession": "Labour",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 13,96,000 ~13 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2961",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 309,
+    "sno": 11,
+    "winner": false,
+    "name": "Manisha Sharma",
+    "party": "Rashtriya Apna Dal",
+    "tag": "tag-c",
+    "age": 49,
+    "education": "Graduate Graduation from ISBM University, Gariyaband, Chattisgarh in 2023",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Business",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 15,27,675 ~15 Lacs+",
+    "liabilities": "Rs 8,60,000 ~8 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2962",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 310,
+    "sno": 12,
+    "winner": false,
+    "name": "Nitish Kumar",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 25,
+    "education": "Post Graduate Master of Arts, Hindi from Motilal Nehru College, Delhi University in 2021-2023",
+    "eduLevel": 5,
+    "terms": 0,
+    "profession": "Consultant",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 1,31,454 ~1 Lacs+",
+    "liabilities": "Rs 1,08,071 ~1 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2963",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    id:101, sno:13, winner:false, name:"Neeraj Kumar Sinha", party:"BJP", tag:"tag-a",
+    age:32, education:"Graduate \u2014 B.A., Magadh University, Sakurabad, Jahanabad (2024)", eduLevel:5, terms:0,
+    profession:"Social worker & businessman; BJP Yuva Morcha (youth wing) organisational worker",
+    criminalCount:0, criminalNote:"No pending criminal cases declared in the affidavit.",
+    assets:"Not available in this pull \u2014 Hindi-language reporting on his affidavit states he owns no house; full figures not captured", liabilities:"Not available in this pull", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No individual manifesto found; contesting as the NDA/BJP's chosen candidate for this by-election.",
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2964",
+    newsStatus:"researched",
+    background:[
+      {text:"The BJP's original candidate for this seat was Abhishek Kumar Sinha, known as \u201cBunty,\u201d who withdrew a day after filing his nomination citing family reasons; reporting also links the switch to concern that his parents' connections to the fodder scam could be used against him by opponents.", flag:true, flagLabel:"Candidate was swapped days before filing"},
+      {text:"The party replaced him with Sinha, a longer-serving BJYM worker rather than a high-profile name."},
+      {text:"Filed his nomination alongside CM Samrat Choudhary and other senior NDA leaders; was accompanied to a temple visit beforehand by sitting BJP MLAs Sanjay Gupta and Sanjiv Chaurasia \u2014 the same Sanjiv Chaurasia who won Digha in this same election cycle."},
+      {text:"His own MyNeta affidavit (indexed after this candidate's news-cycle name became public) lists his legal name as \u201cNeeraj Kumar,\u201d without \u201cSinha\u201d \u2014 every news source used in this app's research calls him Neeraj Kumar Sinha. Both are shown here rather than silently picking one; the affidavit is the authoritative legal document, the fuller name is how he is publicly known and campaigning.", flag:true, flagLabel:"Affidavit name differs from news coverage"}
+    ],
+    newsLinks:[
+      {title:"BJP fields Neeraj Kumar Sinha in Bankipur bypoll after candidate swap", domain:"India TV News", url:"https://www.indiatvnews.com/bihar/news-bjp-fields-neeraj-kumar-sinha-in-bankipur-assembly-bypoll-after-candidate-abhishek-sinha-pulls-out-of-race-2026-07-10-1047838"},
+      {title:"BJP candidate Neeraj Sinha files nomination for Bankipur bypolls", domain:"The Hans India", url:"https://www.thehansindia.com/news/national/bihar-bjp-candidate-neeraj-sinha-files-nomination-for-bankipur-bypolls-1097103"},
+      {title:"Bankipur Byelection: Prashant Kishor Challenges BJP Stronghold in Patna", domain:"Outlook India", url:"https://www.outlookindia.com/national/bankipur-byelection-prashant-kishor-challenges-bjp-stronghold-in-patna"}
+    ]
+  },
+  {
+    "id": 311,
+    "sno": 14,
+    "winner": false,
+    "name": "Baijnath Prasad",
+    "party": "Bharatheeya Jawan Kisan Party",
+    "tag": "tag-c",
+    "age": 61,
+    "education": "Graduate Bachelor of Arts from Kakatiya University in 1993",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Social Worker",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 3,84,05,000 ~3 Crore+",
+    "liabilities": "Rs 8,00,000 ~8 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2965",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    id:102, sno:15, winner:false, name:"Prashant Kishor", party:"Jan Suraaj Party", tag:"tag-c",
+    age:47, education:"Post Graduate \u2014 MHA, ASCI Hyderabad in collaboration with Johns Hopkins University (2001\u201303); BBA, Lucknow University (1996\u201399); 12th, Patna Science College (1993); 10th, Govt. School, Buxar (1991)",
+    eduLevel:5, terms:0,
+    profession:"Political advisor & consultant; founder of IPAC",
+    criminalCount:8, criminalNote:"8 cases declared as pending, per his affidavit and news reporting. Charges have not yet even been framed in any of them, and he has not been convicted in any \u2014 an earlier stage than several other candidates in this app whose charges have been framed. Cases are reported to relate to alleged rioting and obstructing public servants; he has filed petitions in the Patna High Court in some of them.",
+    assets:"\u20b996,00,00,000+ (~96 Crore+, his own declaration)", liabilities:"Not available in this pull", assetHistory:null,
+    manifestoKey:"JANSURAAJ", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2966",
+    newsStatus:"researched",
+    background:[
+      {text:"Founder of IPAC (Indian Political Action Committee) and a political strategist who has advised numerous parties over more than a decade; this bypoll is his own political debut as a candidate."},
+      {text:"His wife, Dr Jahnavi Das, is an MBBS doctor and senior advisor at Apollo Indraprastha Hospital, New Delhi, and declared even greater personal assets \u2014 about \u20b9101.93 crore. Combined, the couple's declared wealth exceeds \u20b9197 crore."},
+      {text:"Has publicly alleged that Deputy CM Samrat Choudhary submitted a fake age certificate to escape trial in a 1995 case linked to seven deaths in Tarapur; Choudhary has filed a separate defamation suit against Kishor over an unrelated, unproven bribery allegation. Neither claim had been adjudicated as of this research pass.", flag:true, flagLabel:"Unresolved allegations, both directions"},
+      {text:"On filing his nomination he said the contest was about \u201cpeople with criminal records\u201d having to \u201cgive up their chair\u201d \u2014 a notable framing given his own 8 pending cases, worth weighing on its own terms rather than taking either side's framing at face value."}
+    ],
+    newsLinks:[
+      {title:"Bankipur Byelection: Prashant Kishor Challenges BJP Stronghold in Patna", domain:"Outlook India", url:"https://www.outlookindia.com/national/bankipur-byelection-prashant-kishor-challenges-bjp-stronghold-in-patna"},
+      {title:"How Rich Is Prashant Kishor? Poll Affidavit Reveals \u20b996 Cr Assets", domain:"Daily Jagran", url:"https://www.thedailyjagran.com/india/how-rich-is-prashant-kishor-jan-suraaj-chiefs-poll-affidavit-reveals-rs-96-cr-assets-but-his-wife-is-richer-10320547"},
+      {title:"Prashant Kishor slapped with defamation suit by Bihar minister Ashok Choudhary", domain:"Deccan Herald", url:"https://www.deccanherald.com/india/bihar/prashant-kishor-slapped-with-defamation-suit-by-bihar-minister-ashok-choudhary-3569180"},
+      {title:"Prashant Kishore And Neeraj Sinha File Nominations", domain:"Dynamite News", url:"https://www.dynamitenews.com/politics/bankipur-assembly-by-poll-prashant-kishore-neeraj-sinha-filed-nominations"}
+    ]
+  },
+  {
+    "id": 312,
+    "sno": 16,
+    "winner": false,
+    "name": "Shukesh Kumar",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 29,
+    "education": "Graduate Bechelor of Science from Magadh University, Magadh, Bihar in 2016",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Self Employed",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 1,00,000 ~1 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2967",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 313,
+    "sno": 17,
+    "winner": false,
+    "name": "Bagish Nandan",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 44,
+    "education": "Graduate Professional B.Tech (Civil) from BIET, Birbhum, WBUT in 2011",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Engineer",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 8,79,000 ~8 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2968",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 314,
+    "sno": 18,
+    "winner": false,
+    "name": "Pradeep Kumar",
+    "party": "Bharatiya Aam Awam Party",
+    "tag": "tag-c",
+    "age": 32,
+    "education": "12th Pass Higher Secodary from V. N. College, Patna",
+    "eduLevel": 3,
+    "terms": 0,
+    "profession": "Business",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 1,50,000 ~1 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2969",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 315,
+    "sno": 19,
+    "winner": false,
+    "name": "Binod Ray",
+    "party": "Bihar Justice Party",
+    "tag": "tag-c",
+    "age": 44,
+    "education": "Graduate Professional LLB from Law College, LNMU Darbhanga in 2013",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Advocate & Agriculture",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 12,47,520 ~12 Lacs+",
+    "liabilities": "Rs 45,000 ~45 Thou+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2970",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 316,
+    "sno": 20,
+    "winner": false,
+    "name": "Abhay Choudhary",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 26,
+    "education": "Graduate Graduate from Magadh University Bodhgaya in 2018",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Business & Social Work",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 4,07,039 ~4 Lacs+",
+    "liabilities": "Nil",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2971",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 317,
+    "sno": 21,
+    "winner": false,
+    "name": "Jitendra Dubey",
+    "party": "Akhil Bharatiya Jan Sangh",
+    "tag": "tag-c",
+    "age": 62,
+    "education": "Graduate Graduate from Ranchi University, Ranchi in 1985",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Agriculture",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 11,66,61,500 ~11 Crore+",
+    "liabilities": "Rs 10,60,000 ~10 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2972",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 318,
+    "sno": 22,
+    "winner": false,
+    "name": "Sikandar Kumar",
+    "party": "IND",
+    "tag": "tag-ind",
+    "age": 43,
+    "education": "Graduate B.A.- Economics from Magadh University, Bodhgaya in 2002",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Spouse Profession:",
+    "criminalCount": 3,
+    "criminalNote": "3 case(s) declared as pending in the affidavit. A declared case is a charge, not a conviction — see the source link for the full record.",
+    "assets": "Rs 2,69,00,000 ~2 Crore+",
+    "liabilities": "Rs 83,00,000 ~83 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "Contesting as an independent — no party manifesto.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2974",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  },
+  {
+    "id": 319,
+    "sno": 23,
+    "winner": false,
+    "name": "Manoranjan Kumar Shrivastava",
+    "party": "Pragatisheel Janta Party",
+    "tag": "tag-c",
+    "age": 56,
+    "education": "Graduate Professional LLB from Magadh University in 1994, Graduate from Bihar University in 1988",
+    "eduLevel": 4,
+    "terms": 0,
+    "profession": "Advocate",
+    "criminalCount": 0,
+    "criminalNote": "No pending criminal cases declared in the affidavit.",
+    "assets": "Rs 3,62,62,556 ~3 Crore+",
+    "liabilities": "Rs 39,00,000 ~39 Lacs+",
+    "assetHistory": null,
+    "manifestoKey": null,
+    "manifestoNote": "No published manifesto located for this party in this election.",
+    "sourceUrl": "https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2976",
+    "newsStatus": "not-researched",
+    "background": [],
+    "newsLinks": []
+  }
+];
+
+const datiaCandidates = [
+  {
+    id:201, sno:1, winner:false, name:"Ashutosh Tiwari", party:"BJP", tag:"tag-a",
+    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
+    profession:"BJP party worker",
+    criminalCount:null, criminalNote:"Criminal case count not captured in this research pass \u2014 the reporting found covered his declared assets, not his criminal declarations.",
+    assets:"\u20b91.79 Crore+ (his own declaration)", liabilities:"\u20b911.83 Lakh+ (bank loan)",
+    assetHistory:"His wife, Kalpana Tiwari, separately declared about \u20b91.76 crore, including over \u20b91.31 crore in agricultural land.",
+    manifestoKey:null, manifestoNote:"No individual manifesto found; contesting as the BJP's chosen candidate for this by-election.",
+    sourceUrl:null,
+    newsStatus:"researched",
+    background:[
+      {text:"The BJP passed over Narottam Mishra \u2014 the party's former Home Minister and its 2023 candidate for this very seat \u2014 in favour of Tiwari, a lower-profile party worker. Mishra's supporters reportedly protested the decision before he publicly backed Tiwari's campaign.", flag:true, flagLabel:"Passed over a senior leader for this seat"},
+      {text:"Introduced himself on filing his nomination as \u201can ordinary worker\u201d chosen by the party, standing next to Mishra and Chief Minister Mohan Yadav."}
+    ],
+    newsLinks:[
+      {title:"BJP candidate Ashutosh files papers for Datia bypoll", domain:"The Hans India", url:"https://www.thehansindia.com/news/national/bjp-candidate-ashutosh-files-papers-for-datia-bypoll-1097268"},
+      {title:"Datia Bypoll: Narottam Back BJP Candidate Ashutosh Tiwari", domain:"Daily Pioneer", url:"https://dailypioneer.com/news/datia-bypoll-narottam-back-bjp-candidate-ashutosh-tiwari"},
+      {title:"Ghanshyam Singh-Ashutosh Tiwari Net Worth (candidate affidavits)", domain:"Khabar Digital", url:"https://khabardigital.com/madhya-pradesh/datia-bypoll-ghanshyam-singh-vs-ashutosh-tiwari-net-worth-property"}
+    ]
+  },
+  {
+    id:202, sno:2, winner:false, name:"Ghanshyam Singh", party:"INC", tag:"tag-b",
+    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
+    profession:"Head of the former Datia royal family (\u201cRaja Saheb\u201d); landholder and businessman",
+    criminalCount:null, criminalNote:"Criminal case count not captured in this research pass.",
+    assets:"\u20b920.08 Crore+ (his own declaration \u2014 agricultural and non-agricultural land, commercial property, 240g gold)", liabilities:"\u20b95.63 Lakh+ (bank loan)",
+    assetHistory:"His wife separately declared about \u20b984.17 lakh in assets and 580g of gold.",
+    manifestoKey:"MGB", manifestoNote:null,
+    sourceUrl:"https://www.myneta.info/MadhyaPradesh2023/candidate.php?candidate_id=420",
+    newsStatus:"researched",
+    background:[
+      {text:"Head of Datia's former princely family, popularly known as \u201cRaja Saheb\u201d \u2014 a real title, not a nickname invented for this app, confirmed by Hindi-language reporting on his affidavit."},
+      {text:"An opposing BJP leader publicly contrasted him with Tiwari as someone \u201cborn into privilege\u201d against a candidate who \u201cdedicated his life to public service\u201d \u2014 that's the BJP's framing of the contest, not a neutral description, included here as campaign context rather than fact.", flag:true, flagLabel:"Opponent's framing, not neutral fact"}
+    ],
+    newsLinks:[
+      {title:"Datia Bypoll: BJP vs Congress Prestige Fight", domain:"New Kerala", url:"https://www.newkerala.com/news/a/datia-bypoll-emerges-as-prestige-battle-bjp-congress-773.htm"},
+      {title:"Ghanshyam Singh-Ashutosh Tiwari Net Worth (candidate affidavits)", domain:"Khabar Digital", url:"https://khabardigital.com/madhya-pradesh/datia-bypoll-ghanshyam-singh-vs-ashutosh-tiwari-net-worth-property"}
+    ]
+  },
+  {
+    id:203, sno:3, winner:false, name:"Sanjana Singh Kinnar", party:"Bharatiya Gan Warta Party", tag:"tag-c",
+    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
+    profession:"Not available in this pull",
+    criminalCount:null, criminalNote:"Not researched in this pass \u2014 no individual MyNeta affidavit page located yet.",
+    assets:"Not available in this pull", liabilities:"Not available in this pull", assetHistory:null,
+    manifestoKey:null, manifestoNote:"No published manifesto found for this party.",
+    sourceUrl:null,
+    newsStatus:"researched",
+    background:[{text:"A transgender candidate whose run has been reported as bringing a \u201cfresh social and political dimension\u201d to the race \u2014 not seen as a front-runner in a BJP-vs-Congress contest, but reported as drawing interest among younger and urban voters."}],
+    newsLinks:[{title:"Datia bypoll turns prestige battle for BJP, Congress", domain:"The Hans India", url:"https://www.thehansindia.com/news/national/datia-bypoll-turns-prestige-battle-for-bjp-congress-1098983"}]
+  }
+];
+
+const CONSTITUENCIES = {
+  digha: { label:"Digha (Patna), Bihar 2025", candidates: dighaCandidates, status:"concluded", note:null,
+    banner:"Real data \u2014 Digha (Patna), Bihar 2025 Assembly Election, all 11 candidates. A declared criminal case is a charge, not a conviction." },
+  bankipur: { label:"Bankipur (Patna), Bihar bypoll", candidates: bankipurCandidates, status:"upcoming", note:"This election hasn't happened yet \u2014 voting is 30 Jul 2026, results 3 Aug 2026. All 23 candidates who filed for this seat are shown, each with its own sworn-affidavit source link, fetched live from ADR/MyNeta on 26 Jul 2026. Three of them were additionally hand-researched for news coverage and background; the other 20 show affidavit data only, marked as not-yet-researched rather than as having no coverage. Two candidates' affidavit names differ from how news coverage identifies them \u2014 flagged on their cards rather than silently resolved.",
+    banner:"Real data \u2014 Bankipur (Patna) bypoll, voting 30 Jul 2026. A declared criminal case is a charge, not a conviction." },
+  datia: { label:"Datia, Madhya Pradesh bypoll", candidates: datiaCandidates, status:"upcoming", note:"Also voting 30 Jul 2026, results 3 Aug 2026 \u2014 the same day as Bankipur, in a different state entirely. This seat is vacant because the sitting MLA was disqualified after being convicted in a fraud case, a useful real contrast with the pending, unconvicted cases everywhere else in this app.",
+    banner:"Real data \u2014 Datia, Madhya Pradesh bypoll, voting 30 Jul 2026. A declared criminal case is a charge, not a conviction." }
+};
+
+
+
+/* ---------------------------------------------------------------------------
+ * UI layer
+ * ------------------------------------------------------------------------- */
+
+let currentKey = null, expandedId = null, activeTab = {}, activeCat = 'all';
+let matrixSort = { col: 'sno', dir: 1 };
+
+function toggleAbout(){ document.getElementById('aboutPanel').classList.toggle('open'); }
+function currentCandidates(){ return currentKey ? CONSTITUENCIES[currentKey].candidates : []; }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* Parse a declared-asset string into a number for the comparison bars.
+ *
+ * Returns null — not 0 — when there is no figure. That distinction is
+ * load-bearing: "Not available in this data pull" means we don't know, while
+ * "Nil" means the candidate declared nothing. Collapsing the first into zero
+ * would rank an unknown candidate as the poorest on the ballot, which is a
+ * fabricated fact about a real person. The matrix renders the two differently
+ * and sorts unknowns to the end regardless of direction. */
+function parseAmount(str){
+  if (str == null) return null;
+  const s = String(str);
+  if (/^\s*nil\s*$/i.test(s)) return 0;
+  if (/not available|not captured|not researched/i.test(s)) return null;
+  const m = s.replace(/[ \s]/g, '').match(/(?:Rs|₹)?([\d,]{4,})/);
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtAmount(str){
+  const n = parseAmount(str);
+  if (n === null) return null;
+  if (n === 0) return 'Nil';
+  if (n >= 1e7) return '₹' + (n / 1e7).toFixed(2).replace(/\.00$/, '') + ' Cr';
+  if (n >= 1e5) return '₹' + (n / 1e5).toFixed(1).replace(/\.0$/, '') + ' L';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+/* Party symbol chip. The symbol NAME is always rendered — the glyph is an
+ * illustration and the name is the authoritative part. See party_symbols.js. */
+function symChip(party, opts){
+  const sym = partySymbol(party);
+  const showName = !opts || opts.showName !== false;
+  if (!sym.verified){
+    return '<span class="sym unverified" title="' + esc(SYMBOL_UNVERIFIED.note) + '">' +
+           '<span class="g">?</span>' + (showName ? 'symbol unconfirmed' : '') + '</span>';
+  }
+  let title = sym.name + ' — ' + (sym.source || '');
+  if (sym.glyphCaveat) title += ' · ' + sym.glyphCaveat;
+  return '<span class="sym" title="' + esc(title) + '">' +
+         '<span class="g">' + sym.glyph + '</span>' + (showName ? esc(sym.name) : '') + '</span>';
+}
+
+function catByKey(key){ return PROMISE_CATEGORIES.find(c => c.key === key) || { key:key, label:key, icon:'📌', blurb:'' }; }
+
+/* Promises for a candidate, from the categorised manifesto data. Candidates
+ * whose party has no published manifesto correctly get an empty list — the UI
+ * says so explicitly rather than showing a blank panel. */
+function promisesFor(cand){
+  if (!cand.manifestoKey || !CATEGORIZED_PROMISES[cand.manifestoKey]) return [];
+  return CATEGORIZED_PROMISES[cand.manifestoKey];
+}
+
+function onHalkaChange(val){
+  const area = document.getElementById('resultArea');
+  expandedId = null; currentKey = null;
+  if (val === ''){
+    area.innerHTML = '';
+    document.getElementById('topBanner').textContent =
+      'Real data — sourced from ECI affidavits via ADR/MyNeta. A declared criminal case is a charge, not a conviction.';
+    return;
+  }
+  if (val === 'other'){
+    area.innerHTML = '<div class="empty-state">No candidate data loaded for this constituency in this demo.<br>' +
+      'The scraper that populates the three seats below runs against any constituency — this one just hasn\'t been fetched.</div>';
+    return;
+  }
+  currentKey = val;
+  document.getElementById('topBanner').textContent = CONSTITUENCIES[val].banner;
+  matrixSort = { col:'sno', dir:1 };
+  renderList();
+}
+
+function renderList(){
+  const c = CONSTITUENCIES[currentKey], list = c.candidates;
+  let html = '<div class="actions">' +
+    '<button class="action-btn" onclick="openMatrix()">▦ Compare all ' + list.length + '</button>' +
+    '<button class="action-btn secondary" onclick="openPromises()">📋 Compare promises</button>' +
+    '</div>';
+  html += '<div class="list-meta"><span>' + list.length + ' candidates</span><span>' + esc(c.label) + '</span></div>';
+  if (c.note) html += '<div class="election-note">' + c.note + '</div>';
+
+  list.forEach(cand => {
+    const isOpen = expandedId === cand.id;
+    html += '<div class="card' + (isOpen ? ' expanded' : '') + '" id="card-' + cand.id + '">' +
+      '<div class="card-row" onclick="toggleExpand(' + cand.id + ')">' +
+      '<div class="ballot-badge">' + cand.sno + '</div>' +
+      '<div class="card-main">' +
+      '<div class="card-name-row"><span class="card-name">' + esc(cand.name) + '</span>' +
+      (cand.winner ? '<span class="winner-badge">Winner</span>' : '') +
+      '<span class="tag ' + cand.tag + '">' + esc(cand.party) + '</span>' +
+      symChip(cand.party) + '</div>' +
+      '<div class="card-sub">' + esc(cand.profession) + '</div>' +
+      '<div class="quick">' + quickChips(cand) + '</div>' +
+      '</div><span class="chev">▾</span></div>' +
+      '<div class="detail">' + (isOpen ? renderDetail(cand) : '') + '</div></div>';
+  });
+  document.getElementById('resultArea').innerHTML = html;
+}
+
+/* At-a-glance row under each name. Deliberately shows "not recorded" as its own
+ * amber state rather than blank — an unchecked criminal record and a clean one
+ * must never look the same. */
+function quickChips(c){
+  let out = '';
+  if (c.criminalCount == null) out += '<span class="qchip unk"><span class="ic">▲</span>cases not recorded</span>';
+  else if (c.criminalCount > 0) out += '<span class="qchip warn"><span class="ic">⚖</span>' + c.criminalCount + ' case' + (c.criminalCount > 1 ? 's' : '') + '</span>';
+  else out += '<span class="qchip ok"><span class="ic">✓</span>no cases</span>';
+
+  if (c.age != null) out += '<span class="qchip"><span class="ic">🎂</span>' + c.age + '</span>';
+  const a = fmtAmount(c.assets);
+  if (a) out += '<span class="qchip"><span class="ic">💰</span>' + a + '</span>';
+  return out;
+}
+
+function toggleExpand(id){ expandedId = (expandedId === id) ? null : id; renderList(); }
+function setTab(id, key){ activeTab[id] = key; renderList(); document.getElementById('card-' + id).scrollIntoView({ block:'nearest' }); }
+function tabBtn(id, key, label, cur){
+  return '<button class="tab-btn' + (cur === key ? ' active' : '') + '" onclick="event.stopPropagation(); setTab(' + id + ", '" + key + "')\">" + label + '</button>';
+}
+function kv(k, v){ return '<div class="kv"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+
+function renderDetail(c){
+  const t = activeTab[c.id] || 'credentials';
+  let html = '<div class="tabs">' +
+    tabBtn(c.id, 'credentials', 'Credentials', t) +
+    tabBtn(c.id, 'declarations', 'Declarations', t) +
+    tabBtn(c.id, 'promises', 'Promises', t) +
+    tabBtn(c.id, 'background', 'News & background', t) + '</div>';
+
+  html += '<div class="tab-panel' + (t === 'credentials' ? ' active' : '') + '">';
+  html += kv('Age', c.age == null ? '<span class="m-missing">Not available</span>' : c.age);
+  html += kv('Education', esc(c.education));
+  html += kv('Profession', esc(c.profession));
+  html += kv('Terms served (this seat)', c.terms);
+  html += kv('Ballot symbol', symChip(c.party));
+  html += '</div>';
+
+  html += '<div class="tab-panel' + (t === 'declarations' ? ' active' : '') + '">';
+  html += '<div class="stamp">SWORN<br>AFFIDAVIT</div>';
+  const fc = c.criminalCount == null ? 'flag-unknown' : (c.criminalCount > 0 ? 'flag-some' : 'flag-none');
+  const ft = c.criminalCount == null ? 'Case count not captured'
+    : (c.criminalCount > 0 ? c.criminalCount + ' criminal case' + (c.criminalCount > 1 ? 's' : '') + ' declared' : 'No criminal cases declared');
+  html += '<div class="criminal-flag ' + fc + '">' + ft + '</div>';
+  html += '<div style="clear:both;font-size:12px;color:var(--text-muted);margin-bottom:8px">' + c.criminalNote + '</div>';
+  html += kv('Declared assets', esc(c.assets));
+  html += kv('Declared liabilities', esc(c.liabilities));
+  if (c.assetHistory) html += '<div class="note">' + c.assetHistory + '</div>';
+  html += c.sourceUrl
+    ? '<div class="src-link">Source: <a href="' + c.sourceUrl + '" target="_blank" rel="noopener">' + esc(c.name) + ' — ADR/MyNeta affidavit record</a></div>'
+    : '<div class="src-link" style="color:var(--text-faint)">No individual affidavit page located for this candidate in this research pass.</div>';
+  html += '</div>';
+
+  /* Promises: grouped by category so a voter can find the one topic they care
+   * about instead of reading a whole manifesto. */
+  html += '<div class="tab-panel' + (t === 'promises' ? ' active' : '') + '">';
+  const proms = promisesFor(c);
+  if (!proms.length){
+    html += '<div style="font-size:12px;color:var(--text-muted)">' + (c.manifestoNote || 'No published manifesto found for this party.') + '</div>';
+  } else {
+    const groups = {};
+    proms.forEach(p => { (groups[p.category] = groups[p.category] || []).push(p); });
+    PROMISE_CATEGORIES.forEach(cat => {
+      if (!groups[cat.key]) return;
+      html += '<div class="promise-group"><h4><span class="pcat"><span class="pi">' + cat.icon + '</span>' + cat.label + '</span></h4>';
+      groups[cat.key].forEach(p => {
+        html += '<div class="plist-item"><span class="bullet">•</span><span>' + esc(p.text) +
+          (p.needsReview ? '<span class="review-flag" title="The classifier was not confident about this category — flagged for human review, not hidden.">category unsure</span>' : '') +
+          '</span></div>';
+      });
+      html += '</div>';
+    });
+    html += '<div class="note">These are <b>party</b> manifesto pledges, which is what is actually published and citable. ' +
+      'Constituency-level promises are usually spoken at rallies, not written down, and are not archived anywhere reliable — ' +
+      'so this app does not show any. Categories are auto-assigned; anything marked "category unsure" is awaiting a human check.</div>';
+  }
+  html += '</div>';
+
+  /* News: key points first (what we actually found), then links out. */
+  html += '<div class="tab-panel' + (t === 'background' ? ' active' : '') + '">';
+  if (c.newsStatus === 'not-researched'){
+    html += '<div style="font-size:12px;color:var(--text-muted)">' + NOT_RESEARCHED_NOTE + '</div>';
+  } else if (c.newsStatus === 'no-coverage'){
+    html += '<div style="font-size:12px;color:var(--text-muted)">' + NO_COVERAGE_NOTE + '</div>';
+  }
+  if (c.background && c.background.length){
+    html += '<div class="promise-group"><h4>Key points</h4>';
+    c.background.forEach((b, i) => {
+      if (b.flag){
+        html += '<div class="bg-item flag"><span class="flag-label">' + b.flagLabel + '</span>' + b.text + '</div>';
+      } else {
+        html += '<div class="keypoint"><span class="kp-num">' + (i + 1) + '</span><span>' + b.text + '</span></div>';
+      }
+    });
+    html += '</div>';
+  }
+  if (c.newsLinks && c.newsLinks.length){
+    html += '<div class="promise-group"><h4>Read the full coverage</h4>';
+    c.newsLinks.forEach(n => {
+      html += '<a class="news-card" href="' + n.url + '" target="_blank" rel="noopener">' +
+        '<div class="nc-title">' + esc(n.title) + '</div><div class="nc-domain">' + esc(n.domain) + ' ↗</div></a>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* --- Compare-all matrix ---------------------------------------------------
+ * Every candidate, every parameter, one screen. Replaces the old two-candidate
+ * limit, which forced a voter facing 22 names to run dozens of pairwise
+ * comparisons to answer "who here has no criminal cases?".
+ *
+ * It sorts but never scores: there is no computed "best candidate" column,
+ * because collapsing criminal cases, education and wealth into one number is a
+ * values judgment, not a fact, and it is not this app's to make. */
+const MATRIX_COLS = [
+  { key:'sno',      label:'#',          type:'num',  get:c => c.sno },
+  { key:'name',     label:'Candidate',  type:'str',  get:c => c.name, sticky:true },
+  { key:'age',      label:'Age',        type:'num',  get:c => c.age },
+  { key:'edu',      label:'Education',  type:'num',  get:c => c.eduLevel },
+  { key:'crime',    label:'Criminal cases', type:'num', get:c => c.criminalCount },
+  { key:'assets',   label:'Declared assets', type:'num', get:c => parseAmount(c.assets) },
+  { key:'liab',     label:'Liabilities', type:'num', get:c => parseAmount(c.liabilities) },
+  { key:'terms',    label:'Terms',      type:'num',  get:c => c.terms },
+  { key:'prof',     label:'Profession', type:'str',  get:c => c.profession }
+];
+
+const EDU_LABELS = { 1:'8th', 2:'10th', 3:'12th', 4:'Graduate', 5:'Post-grad', 6:'Doctorate' };
+
+function openMatrix(){
+  renderMatrix();
+  document.getElementById('matrixOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeCanvas(id){
+  document.getElementById(id).classList.remove('show');
+  document.body.style.overflow = '';
+}
+function sortMatrix(col){
+  matrixSort = (matrixSort.col === col) ? { col:col, dir:-matrixSort.dir } : { col:col, dir:1 };
+  renderMatrix();
+}
+
+function renderMatrix(){
+  const c = CONSTITUENCIES[currentKey];
+  const list = c.candidates.slice();
+  const col = MATRIX_COLS.find(x => x.key === matrixSort.col) || MATRIX_COLS[0];
+
+  /* Unknowns always sink to the bottom, in both sort directions. Sorting a
+   * missing value as if it were zero would put every candidate whose record we
+   * failed to parse at the "cleanest" end of the criminal-cases column — the
+   * single most misleading thing this table could do. */
+  list.sort((a, b) => {
+    const va = col.get(a), vb = col.get(b);
+    const na = va == null || va === '', nb = vb == null || vb === '';
+    if (na && nb) return 0;
+    if (na) return 1;
+    if (nb) return -1;
+    if (col.type === 'num') return (va - vb) * matrixSort.dir;
+    return String(va).localeCompare(String(vb)) * matrixSort.dir;
+  });
+
+  const maxAssets = Math.max(...c.candidates.map(x => parseAmount(x.assets) || 0), 1);
+
+  let html = '<div class="matrix-wrap"><table class="matrix"><thead><tr>';
+  MATRIX_COLS.forEach(mc => {
+    const arrow = matrixSort.col === mc.key ? '<span class="arrow">' + (matrixSort.dir > 0 ? '▲' : '▼') + '</span>' : '';
+    html += '<th' + (mc.sticky ? ' class="cname"' : '') + ' onclick="sortMatrix(\'' + mc.key + '\')">' + mc.label + arrow + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  list.forEach(cand => {
+    html += '<tr>';
+    html += '<td><span class="amt">' + cand.sno + '</span></td>';
+    html += '<td class="cname"><span class="m-name">' + esc(cand.name) + (cand.winner ? ' <span class="winner-badge">Won</span>' : '') + '</span>' +
+            '<span class="m-party">' + symChip(cand.party, { showName:false }) + esc(cand.party) + '</span></td>';
+    html += '<td>' + (cand.age == null ? '<span class="m-missing">not recorded</span>' : cand.age) + '</td>';
+
+    if (cand.eduLevel == null){
+      html += '<td><span class="m-missing">not recorded</span></td>';
+    } else {
+      let pips = '';
+      for (let i = 1; i <= 6; i++) pips += '<span class="edu-pip' + (i <= cand.eduLevel ? ' on' : '') + '"></span>';
+      html += '<td><span class="edu-pips" title="' + esc(cand.education) + '">' + pips + '</span>' +
+              '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + (EDU_LABELS[cand.eduLevel] || '') + '</div></td>';
+    }
+
+    if (cand.criminalCount == null){
+      html += '<td><span class="crime-unk" title="Not captured in this data pull — not the same as zero.">not recorded</span></td>';
+    } else if (cand.criminalCount === 0){
+      html += '<td><span class="crime-zero">✓ none</span></td>';
+    } else {
+      let dots = '';
+      for (let i = 0; i < Math.min(cand.criminalCount, 10); i++) dots += '<span class="crime-dot"></span>';
+      html += '<td><span class="crime-dots" title="' + esc(cand.criminalNote || '') + '">' + dots +
+              '<span style="margin-left:5px;font-family:var(--mono);font-size:11px;color:var(--stamp-red)">' + cand.criminalCount + '</span></span></td>';
+    }
+
+    const av = parseAmount(cand.assets), af = fmtAmount(cand.assets);
+    html += '<td>' + (af === null ? '<span class="m-missing">not recorded</span>'
+      : '<span class="amt">' + af + '</span><span class="abar"><i style="width:' + Math.max(2, (av / maxAssets) * 100) + '%"></i></span>') + '</td>';
+
+    const lf = fmtAmount(cand.liabilities);
+    html += '<td>' + (lf === null ? '<span class="m-missing">not recorded</span>' : '<span class="amt">' + lf + '</span>') + '</td>';
+    html += '<td>' + cand.terms + '</td>';
+    html += '<td style="max-width:190px;font-size:11.5px">' + esc(cand.profession) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div class="legend-row">' +
+    '<span><span class="crime-dot"></span> one declared criminal case</span>' +
+    '<span><span class="edu-pip on"></span><span class="edu-pip on"></span><span class="edu-pip"></span> education level</span>' +
+    '<span class="m-missing">not recorded = we could not read it, which is not the same as zero</span>' +
+    '</div>';
+  html += '<div class="disclaimer-note"><b>This table sorts. It does not score.</b> ' +
+    'Click any column heading to reorder by that measure. There is deliberately no overall ranking: ' +
+    'deciding how criminal cases weigh against education or wealth is a judgment about values, and it belongs to you, not to this app. ' +
+    'A declared criminal case is a <b>charge that has not been tried</b>, not a conviction.</div>';
+
+  document.getElementById('matrixSub').textContent =
+    c.label + ' · ' + c.candidates.length + ' candidates · sorted by ' + col.label.toLowerCase();
+  document.getElementById('matrixContent').innerHTML = html;
+}
+
+/* --- Promise canvas -------------------------------------------------------
+ * Pick a category, see what every candidate on the ballot has said about it,
+ * side by side — including, importantly, who has said nothing. */
+function openPromises(){
+  activeCat = 'all';
+  renderPromiseCanvas();
+  document.getElementById('promiseOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function setCat(k){ activeCat = k; renderPromiseCanvas(); }
+
+function renderPromiseCanvas(){
+  const c = CONSTITUENCIES[currentKey];
+  const list = c.candidates;
+
+  const counts = {};
+  list.forEach(cand => {
+    promisesFor(cand).forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1; });
+  });
+  const present = PROMISE_CATEGORIES.filter(cat => counts[cat.key]);
+
+  let html = '<div class="cat-bar">';
+  html += '<button class="cat-btn' + (activeCat === 'all' ? ' active' : '') + '" onclick="setCat(\'all\')">All topics</button>';
+  present.forEach(cat => {
+    html += '<button class="cat-btn' + (activeCat === cat.key ? ' active' : '') + '" onclick="setCat(\'' + cat.key + '\')">' +
+      '<span>' + cat.icon + '</span>' + cat.label + '<span class="cnt">' + counts[cat.key] + '</span></button>';
+  });
+  html += '</div>';
+
+  if (activeCat !== 'all'){
+    const cat = catByKey(activeCat);
+    html += '<div class="cat-blurb">' + cat.icon + ' ' + esc(cat.blurb) + '</div>';
+  }
+
+  /* One column per candidate that has a manifesto. Candidates without one are
+   * summarised below rather than rendered as a wall of empty cards — but they
+   * are never dropped, because "this candidate published nothing" is itself
+   * information a voter should have. */
+  const withManifesto = list.filter(cand => promisesFor(cand).length);
+  const without = list.filter(cand => !promisesFor(cand).length);
+
+  html += '<div class="pcols">';
+  withManifesto.forEach(cand => {
+    const proms = promisesFor(cand).filter(p => activeCat === 'all' || p.category === activeCat);
+    html += '<div class="pcol"><h5>' + esc(cand.name) + '</h5>' +
+      '<div class="pc-party">' + symChip(cand.party, { showName:false }) + esc(cand.party) + '</div>';
+    if (!proms.length){
+      html += '<div class="none">No pledge in this category from this party’s manifesto.</div>';
+    } else {
+      proms.forEach(p => {
+        const cat = catByKey(p.category);
+        html += '<div class="plist-item"><span class="bullet">' + (activeCat === 'all' ? cat.icon : '•') + '</span><span>' +
+          esc(p.text) + (p.needsReview ? '<span class="review-flag">category unsure</span>' : '') + '</span></div>';
+      });
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  if (without.length){
+    html += '<div class="disclaimer-note"><b>' + without.length + ' of ' + list.length +
+      ' candidates have no published manifesto to compare</b> — ' +
+      esc(without.map(x => x.name).join(', ')) + '. ' +
+      'That is mostly independents and small parties, which typically do not publish one at all. ' +
+      'They are listed here rather than hidden, because "made no written promises" is a real fact about a candidate.</div>';
+  }
+  html += '<div class="disclaimer-note">Promises come from <b>party</b> manifestos, the only pledges published in citable form. ' +
+    'Categories are assigned automatically by keyword; where the classifier was unsure it says so rather than guessing quietly. ' +
+    'A manifesto pledge is a statement of intent — this app does not track whether it was kept.</div>';
+
+  document.getElementById('promiseSub').textContent =
+    c.label + ' · ' + present.length + ' topics covered across ' + withManifesto.length + ' manifestos';
+  document.getElementById('promiseContent').innerHTML = html;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ closeCanvas('matrixOverlay'); closeCanvas('promiseOverlay'); }
+});
+
+</script>
+</body>
+</html>
