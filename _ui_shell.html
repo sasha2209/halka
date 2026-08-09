@@ -27,6 +27,9 @@
   .stack::before{ top:10px; left:8px; right:-8px; bottom:-10px; transform:rotate(-0.8deg); z-index:0; }
   .stack::after{ top:5px; left:-6px; right:6px; bottom:-5px; transform:rotate(0.6deg); z-index:0; }
   .app{ position:relative; z-index:1; background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:28px 22px 22px; }
+  .lang-switcher{ position:absolute; top:14px; right:14px; display:flex; align-items:center; gap:4px; z-index:5; }
+  .lang-icon{ font-size:13px; opacity:0.7; }
+  select.lang-select{ font-family:var(--sans); font-size:11.5px; font-weight:500; padding:5px 7px; border-radius:4px; border:1px solid var(--line); background:#fff; color:var(--text-ink); cursor:pointer; width:auto; }
   header{ margin-bottom:18px; }
   .wordmark{ font-family:var(--serif); font-weight:600; font-size:28px; letter-spacing:-0.01em; margin:0; }
   .tagline{ font-size:13px; color:var(--text-muted); margin:4px 0 0; }
@@ -49,9 +52,9 @@
 
   /* --- party symbol chip --- */
   .sym{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; padding:2px 7px 2px 5px; border-radius:10px; background:rgba(255,255,255,0.75); border:1px solid var(--line); white-space:nowrap; color:var(--text-muted); }
-  .sym .g{ font-size:13px; line-height:1; }
+  img.sym-img, .sym img.g{ width:15px; height:15px; object-fit:contain; display:inline-block; background:#fff; border-radius:2px; flex:0 0 auto; }
   .sym.unverified{ border-style:dashed; color:var(--text-faint); background:transparent; }
-  .sym.unverified .g{ font-family:var(--mono); font-weight:700; color:var(--amber); }
+  .sym.unverified .g{ font-family:var(--mono); font-weight:700; color:var(--amber); width:auto; height:auto; background:none; }
 
   /* --- cards --- */
   .card{ border:1px solid var(--line); border-radius:4px; background:var(--paper-card); margin-bottom:10px; overflow:hidden; }
@@ -170,40 +173,39 @@
 
 <div class="stack">
   <div class="app">
+    <div class="lang-switcher">
+      <span class="lang-icon" aria-hidden="true">🌐</span>
+      <span id="langSwitcherSlot"></span>
+    </div>
     <header>
       <p class="wordmark">Halka</p>
-      <p class="tagline">Know who's on your ballot, before you mark it.</p>
-      <button class="about-toggle" onclick="toggleAbout()">About this data</button>
-      <div class="about-panel" id="aboutPanel">
-        Credentials and declarations come from candidates' self-sworn ECI affidavits, via
-        <a href="https://www.myneta.info/" target="_blank" rel="noopener">ADR / MyNeta</a>, fetched by this
-        project's own scraper and carrying a source link per candidate. <b>Party symbols</b> are shown only where
-        the ECI reserves that symbol for that party; unrecognised parties and independents get a free symbol
-        allotted per constituency, so those show as unconfirmed rather than guessed &mdash; check your ballot.
-        <b>Promises</b> are auto-sorted into categories by a keyword classifier whose low-confidence guesses are
-        flagged for review, never silently accepted. The <b>compare</b> tools rank nothing for you: the matrix
-        sorts on whichever column you pick, and no single "best candidate" score is computed anywhere in this app.
+      <p class="tagline" data-i18n="tagline">Know who's on your ballot, before you mark it.</p>
+      <button class="about-toggle" onclick="toggleAbout()" data-i18n="aboutToggle">About this data</button>
+      <div class="about-panel" id="aboutPanel" data-i18n="aboutBody">
+        Every candidate's background and money details come from their own signed declaration to the
+        Election Commission, shared through ADR / MyNeta. Each candidate card links straight to their
+        original record, so you can check it yourself.
       </div>
     </header>
 
     <div class="banner" id="topBanner">Real data — sourced from ECI affidavits via ADR/MyNeta. A declared criminal case is a charge, not a conviction.</div>
 
     <div>
-      <label class="field-label" for="halkaSelect">Search your constituency (halka)</label>
+      <label class="field-label" for="halkaSelect" data-i18n="selectLabel">Search your constituency (halka)</label>
       <select id="halkaSelect" onchange="onHalkaChange(this.value)">
-        <option value="">Choose a constituency…</option>
+        <option value="" data-i18n="chooseConstituency">Choose a constituency…</option>
         <option value="digha">Digha (Patna), Bihar — 2025 election, concluded</option>
         <option value="bankipur">Bankipur (Patna), Bihar — bypoll, voting 30 Jul 2026</option>
         <option value="datia">Datia, Madhya Pradesh — bypoll, voting 30 Jul 2026</option>
-        <option value="other">Any other constituency — not loaded in this demo</option>
+        <option value="other" data-i18n="optOther">Any other constituency — coming soon</option>
       </select>
     </div>
 
     <div id="resultArea"></div>
 
     <footer class="foot">
-      Sources: <a href="https://www.myneta.info/" target="_blank" rel="noopener">ECI affidavit archive via ADR/MyNeta</a>,
-      plus the news outlets cited per candidate.
+      <span data-i18n="sourcesFooter">Sources:</span> <a href="https://www.myneta.info/" target="_blank" rel="noopener">ECI affidavit archive via ADR/MyNeta</a>,
+      <span data-i18n="footerNewsOutlets">plus the news outlets cited per candidate.</span>
     </footer>
   </div>
 </div>
@@ -235,6 +237,8 @@
 </div>
 
 <script>
+/*__I18N__*/
+
 /*__PARTY_SYMBOLS__*/
 
 /*__PROMISE_DATA__*/
@@ -242,6 +246,10 @@
 /*__CANDIDATE_DATA__*/
 
 /*__UI_CODE__*/
+
+document.getElementById('langSwitcherSlot').innerHTML = buildLangSwitcher();
+document.getElementById('topBanner').textContent = t('bannerDefault');
+applyLanguage();
 </script>
 </body>
 </html>

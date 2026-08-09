@@ -1,138 +1,150 @@
 /* party_symbols.js
  *
- * ECI-allotted election symbols, for showing voters the mark they will actually
- * look for on the EVM.
+ * ECI-allotted election symbols, shown as the actual real image of the symbol
+ * — the mark a voter looks for on the EVM — not an approximation of one.
  *
  * WHY THIS FILE IS CAUTIOUS
  * -------------------------
- * A wrong symbol here is the most dangerous error this whole project could
+ * A wrong symbol here is the most dangerous error this whole product could
  * make. Every other field — age, education, assets — is information a voter
- * weighs. The symbol is the thing they physically press. Showing a lotus next
- * to the wrong candidate could cause a real misvote, so this file never
- * guesses: a party either has a verified symbol or is explicitly marked
- * unverified, and the UI renders that difference plainly.
+ * weighs. The symbol is the thing they physically press. So this file never
+ * substitutes a stand-in picture for the real one: a party either has a
+ * verified real image of its actual reserved symbol, or the app plainly says
+ * the symbol isn't confirmed. Nothing in between.
  *
  * WHAT "VERIFIED" MEANS HERE
  * --------------------------
- * The symbol is RESERVED for that party by the ECI nationally or in the
- * relevant state, and was confirmed against reporting or ECI-derived sources
- * during this project's research (2026-07-26). Reserved symbols are stable
- * across elections, which is what makes them safe to hard-code.
+ * The symbol is RESERVED for that party by the ECI, and the image is the
+ * real published symbol — sourced from Wikimedia Commons, checked by
+ * actually looking at each image before use (not just trusting a filename),
+ * and license-cleared for reuse. See assets/symbols/SOURCES.md for exactly
+ * which file came from where, and the one case (BSP) where the obvious
+ * top search result was rejected because it was the party's colored logo,
+ * not the black-and-white symbol that actually appears on a ballot.
  *
  * WHAT IS DELIBERATELY NOT HERE
  * -----------------------------
- * Registered-but-unrecognised parties and independents do NOT have reserved
- * symbols. They are allotted a "free symbol" per election, per constituency,
- * from the ECI's free-symbols list — so the same party can carry different
- * symbols in different seats, and an independent's symbol is specific to that
- * one contest. Hard-coding those would be inventing facts. They resolve to
- * UNVERIFIED, and the UI tells the voter to check their ballot.
+ * 1. Registered-but-unrecognised parties and independents. They're allotted
+ *    a "free symbol" per election, per constituency — the same party can
+ *    carry different symbols in different seats, so hard-coding one here
+ *    would show a real voter the wrong mark for their specific ballot.
+ * 2. Jan Suraaj Party's "School Bag" symbol. It's real (ECI-allotted, 2025)
+ *    but no verified image of it could be found anywhere public as of
+ *    2026-07-27. Rather than draw one, this app says so.
  *
- * ON THE GLYPHS
- * -------------
- * The emoji is an ILLUSTRATION, not the ballot artwork. Some are exact (lotus,
- * elephant, school bag, clock); others are approximations (the RJD's hurricane
- * lantern is not the same object as a red paper lantern). So the symbol's
- * OFFICIAL NAME is always rendered alongside the glyph, and the name — not the
- * picture — is the authoritative part. That ordering is deliberate: a voter who
- * reads "Lantern" and sees a lantern-ish glyph is correctly informed; one who
- * sees only an approximate picture might not be.
+ * Both cases resolve to SYMBOL_UNVERIFIED, which tells a voter to check
+ * their own ballot instead of showing them a picture that might be wrong.
+ *
+ * IMAGE_MAP is filled in at build time (build_app.py) with base64 data URIs
+ * of the real source files, so the shipped app is one self-contained file
+ * with no external image requests.
  */
 
 const SYMBOL_UNVERIFIED = {
   name: null,
-  glyph: "?",
+  image: null,
   verified: false,
-  note: "Symbol not confirmed for this party. Unrecognised parties and independents " +
-        "are allotted a free symbol per constituency, so it can differ by seat — " +
-        "check the ballot or the ECI candidate list for this constituency."
+  note: "This party's symbol isn't confirmed. Parties that aren't nationally " +
+        "recognised, and independents, get a different symbol assigned for each " +
+        "constituency — so please check your own ballot paper or EVM for the exact mark."
+};
+
+/* IMAGE_MAP: logical key -> base64 data URI. Placeholder strings below are
+ * replaced by build_app.py, which reads the real files out of
+ * assets/symbols/ and inlines them. If you're reading this file directly
+ * (not the built halka-app.html), these placeholders are literally what's
+ * here — run build_app.py to get an app with real images. */
+const SYMBOL_IMAGES = {
+  bjp_lotus: "__IMG_bjp_lotus__",
+  inc_hand: "__IMG_inc_hand__",
+  bsp_elephant: "__IMG_bsp_elephant__",
+  cpi_corn_sickle: "__IMG_cpi_corn_sickle__",
+  cpim_hammer_sickle_star: "__IMG_cpim_hammer_sickle_star__",
+  ncp_clock: "__IMG_ncp_clock__",
+  aitc_flower_grass: "__IMG_aitc_flower_grass__",
+  rjd_lantern: "__IMG_rjd_lantern__",
+  jdu_arrow: "__IMG_jdu_arrow__",
+  cpiml_l_flag_three_stars: "__IMG_cpiml_l_flag_three_stars__"
 };
 
 const PARTY_SYMBOLS = {
   // --- National parties: symbols reserved nationwide ---
   "BJP": {
-    name: "Lotus", glyph: "🪷", verified: true,
+    name: "Lotus", image: "bjp_lotus", verified: true,
     fullName: "Bharatiya Janata Party",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 3.0 — see assets/symbols/SOURCES.md"
   },
   "INC": {
-    name: "Hand", glyph: "✋", verified: true,
+    name: "Hand", image: "inc_hand", verified: true,
     fullName: "Indian National Congress",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, public domain (India) — see assets/symbols/SOURCES.md"
   },
   "BSP": {
-    name: "Elephant", glyph: "🐘", verified: true,
+    name: "Elephant", image: "bsp_elephant", verified: true,
     fullName: "Bahujan Samaj Party",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 3.0 — see assets/symbols/SOURCES.md",
+    note: "The black-and-white ballot rendering, not BSP's own colored party logo."
   },
   "CPI": {
-    name: "Ears of Corn and Sickle", glyph: "🌾", verified: true,
+    name: "Ears of Corn and Sickle", image: "cpi_corn_sickle", verified: true,
     fullName: "Communist Party of India",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 3.0 — see assets/symbols/SOURCES.md"
   },
   "CPI(M)": {
-    name: "Hammer, Sickle and Star", glyph: "☭", verified: true,
+    name: "Hammer, Sickle and Star", image: "cpim_hammer_sickle_star", verified: true,
     fullName: "Communist Party of India (Marxist)",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 4.0 — see assets/symbols/SOURCES.md"
   },
   "NCP": {
-    name: "Clock", glyph: "🕐", verified: true,
+    name: "Clock", image: "ncp_clock", verified: true,
     fullName: "Nationalist Congress Party",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 4.0 — see assets/symbols/SOURCES.md"
   },
   "AITC": {
-    name: "Flower and Grass", glyph: "🌿", verified: true,
+    name: "Flowers and Grass", image: "aitc_flower_grass", verified: true,
     fullName: "All India Trinamool Congress",
-    source: "ECI reserved symbol (national party)"
+    source: "Wikimedia Commons, CC BY-SA 3.0 — see assets/symbols/SOURCES.md"
   },
 
   // --- State parties: reserved in the relevant state ---
   "RJD": {
-    name: "Hurricane Lamp (Lantern)", glyph: "🏮", verified: true,
+    name: "Hurricane Lamp", image: "rjd_lantern", verified: true,
     fullName: "Rashtriya Janata Dal",
-    source: "ECI reserved symbol (state party, Bihar & Jharkhand)",
-    glyphCaveat: "Glyph is an approximation — the ballot symbol is a hurricane lamp."
+    source: "Wikimedia Commons, CC BY-SA 4.0 — see assets/symbols/SOURCES.md"
   },
   "JDU": {
-    name: "Arrow", glyph: "⬆️", verified: true,
+    name: "Arrow", image: "jdu_arrow", verified: true,
     fullName: "Janata Dal (United)",
-    source: "ECI reserved symbol (state party, Bihar)"
+    source: "Wikimedia Commons, CC BY-SA 3.0 / GFDL — see assets/symbols/SOURCES.md"
   },
   "CPI(ML)(L)": {
-    name: "Flag with Three Stars", glyph: "🚩", verified: true,
+    name: "Flag with Three Stars", image: "cpiml_l_flag_three_stars", verified: true,
     fullName: "Communist Party of India (Marxist–Leninist) Liberation",
-    source: "ECI reserved symbol; contested on this symbol in Bihar & Jharkhand since 2019",
-    glyphCaveat: "Glyph is an approximation — the ballot symbol is a flag bearing three stars."
-  },
-
-  // --- Registered party with a symbol allotted for this election cycle ---
-  "Jan Suraaj Party": {
-    name: "School Bag", glyph: "🎒", verified: true,
-    fullName: "Jan Suraaj Party",
-    source: "Allotted by the ECI for the Bihar 2025 assembly election",
-    glyphCaveat: "Allotted for Bihar 2025 — a newly registered party's symbol is not " +
-                 "reserved permanently and can change between elections."
+    source: "Wikimedia Commons, CC BY-SA 4.0 — see assets/symbols/SOURCES.md"
   }
 
-  // Everything below appears in this dataset but has NO confirmed symbol, and
-  // is intentionally absent so it resolves to SYMBOL_UNVERIFIED rather than a
-  // plausible-looking guess:
-  //   Bharatiya Gan Warta Party, Bharatiya Momin Front, Jagrook Janta Party,
-  //   Rashtriya Jansambhavna Party, Rashtriya Lok Janshakti Party,
-  //   Right to Recall Party, The Plurals Party, Vocal India Party,
-  //   Independent (free symbol, allotted per candidate per seat)
+  // Jan Suraaj Party's real symbol (School Bag) is deliberately absent — see
+  // the file header. It resolves to SYMBOL_UNVERIFIED, not a drawn stand-in.
+  //
+  // Everything else appearing in this dataset has NO reserved symbol at all —
+  // Bharatiya Gan Warta Party, Bharatiya Momin Front, Jagrook Janta Party,
+  // Rashtriya Jansambhavna Party, Rashtriya Lok Janshakti Party, Right to
+  // Recall Party, The Plurals Party, Vocal India Party, and every Independent
+  // (free symbol, allotted per candidate per seat).
 };
 
-/* Resolve a party name to its symbol record. Matching is exact-then-normalised
- * rather than fuzzy: a fuzzy match that turns "Rashtriya Lok Janshakti Party"
- * into "Rashtriya Janata Dal" would attach the wrong ballot symbol to a real
- * candidate, which is precisely the failure this file exists to prevent. */
+/* Resolve a party name to its symbol record, with the image data URI already
+ * attached. Matching is exact-then-normalised, never fuzzy: turning "Rashtriya
+ * Lok Janshakti Party" into "Rashtriya Janata Dal" would attach the wrong
+ * ballot symbol to a real candidate, which is exactly what this file exists
+ * to prevent. */
 function partySymbol(party) {
+  const resolve = (rec) => rec.image ? { ...rec, image: SYMBOL_IMAGES[rec.image] } : rec;
   if (!party) return SYMBOL_UNVERIFIED;
-  if (PARTY_SYMBOLS[party]) return PARTY_SYMBOLS[party];
+  if (PARTY_SYMBOLS[party]) return resolve(PARTY_SYMBOLS[party]);
   const norm = String(party).trim().toUpperCase().replace(/[\s.]/g, "");
   for (const key of Object.keys(PARTY_SYMBOLS)) {
-    if (key.toUpperCase().replace(/[\s.]/g, "") === norm) return PARTY_SYMBOLS[key];
+    if (key.toUpperCase().replace(/[\s.]/g, "") === norm) return resolve(PARTY_SYMBOLS[key]);
   }
   return SYMBOL_UNVERIFIED;
 }

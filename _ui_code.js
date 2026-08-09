@@ -39,17 +39,20 @@ function fmtAmount(str){
 
 /* Party symbol chip. The symbol NAME is always rendered — the glyph is an
  * illustration and the name is the authoritative part. See party_symbols.js. */
+/* Renders the ACTUAL symbol image (never an emoji stand-in). The name is
+ * always shown alongside the picture — for a party with no confirmed image,
+ * that's the honest "symbol not confirmed" state instead of a guessed glyph. */
 function symChip(party, opts){
   const sym = partySymbol(party);
   const showName = !opts || opts.showName !== false;
-  if (!sym.verified){
+  if (!sym.verified || !sym.image){
     return '<span class="sym unverified" title="' + esc(SYMBOL_UNVERIFIED.note) + '">' +
-           '<span class="g">?</span>' + (showName ? 'symbol unconfirmed' : '') + '</span>';
+           '<span class="g">—</span>' + (showName ? t('symbolUnconfirmed') : '') + '</span>';
   }
-  let title = sym.name + ' — ' + (sym.source || '');
-  if (sym.glyphCaveat) title += ' · ' + sym.glyphCaveat;
+  const title = sym.name + (sym.note ? ' — ' + sym.note : '');
   return '<span class="sym" title="' + esc(title) + '">' +
-         '<span class="g">' + sym.glyph + '</span>' + (showName ? esc(sym.name) : '') + '</span>';
+         '<img class="g" src="' + sym.image + '" alt="' + esc(sym.name) + ' symbol">' +
+         (showName ? esc(sym.name) : '') + '</span>';
 }
 
 function catByKey(key){ return PROMISE_CATEGORIES.find(c => c.key === key) || { key:key, label:key, icon:'📌', blurb:'' }; }
@@ -67,13 +70,12 @@ function onHalkaChange(val){
   expandedId = null; currentKey = null;
   if (val === ''){
     area.innerHTML = '';
-    document.getElementById('topBanner').textContent =
-      'Real data — sourced from ECI affidavits via ADR/MyNeta. A declared criminal case is a charge, not a conviction.';
+    document.getElementById('topBanner').textContent = t('bannerDefault');
     return;
   }
   if (val === 'other'){
-    area.innerHTML = '<div class="empty-state">No candidate data loaded for this constituency in this demo.<br>' +
-      'The scraper that populates the three seats below runs against any constituency — this one just hasn\'t been fetched.</div>';
+    area.innerHTML = '<div class="empty-state">We don\'t have this constituency loaded yet.<br>' +
+      'The three constituencies below are live right now — support for more is on the way.</div>';
     return;
   }
   currentKey = val;
@@ -85,10 +87,10 @@ function onHalkaChange(val){
 function renderList(){
   const c = CONSTITUENCIES[currentKey], list = c.candidates;
   let html = '<div class="actions">' +
-    '<button class="action-btn" onclick="openMatrix()">▦ Compare all ' + list.length + '</button>' +
-    '<button class="action-btn secondary" onclick="openPromises()">📋 Compare promises</button>' +
+    '<button class="action-btn" onclick="openMatrix()">▦ ' + t('compareAll') + ' ' + list.length + '</button>' +
+    '<button class="action-btn secondary" onclick="openPromises()">📋 ' + t('comparePromises') + '</button>' +
     '</div>';
-  html += '<div class="list-meta"><span>' + list.length + ' candidates</span><span>' + esc(c.label) + '</span></div>';
+  html += '<div class="list-meta"><span>' + list.length + ' ' + t('candidatesWord') + '</span><span>' + esc(c.label) + '</span></div>';
   if (c.note) html += '<div class="election-note">' + c.note + '</div>';
 
   list.forEach(cand => {
@@ -98,7 +100,7 @@ function renderList(){
       '<div class="ballot-badge">' + cand.sno + '</div>' +
       '<div class="card-main">' +
       '<div class="card-name-row"><span class="card-name">' + esc(cand.name) + '</span>' +
-      (cand.winner ? '<span class="winner-badge">Winner</span>' : '') +
+      (cand.winner ? '<span class="winner-badge">' + t('winnerBadge') + '</span>' : '') +
       '<span class="tag ' + cand.tag + '">' + esc(cand.party) + '</span>' +
       symChip(cand.party) + '</div>' +
       '<div class="card-sub">' + esc(cand.profession) + '</div>' +
@@ -114,9 +116,9 @@ function renderList(){
  * must never look the same. */
 function quickChips(c){
   let out = '';
-  if (c.criminalCount == null) out += '<span class="qchip unk"><span class="ic">▲</span>cases not recorded</span>';
-  else if (c.criminalCount > 0) out += '<span class="qchip warn"><span class="ic">⚖</span>' + c.criminalCount + ' case' + (c.criminalCount > 1 ? 's' : '') + '</span>';
-  else out += '<span class="qchip ok"><span class="ic">✓</span>no cases</span>';
+  if (c.criminalCount == null) out += '<span class="qchip unk"><span class="ic">▲</span>' + t('chipCasesUnrecorded') + '</span>';
+  else if (c.criminalCount > 0) out += '<span class="qchip warn"><span class="ic">⚖</span>' + c.criminalCount + ' ' + (c.criminalCount > 1 ? t('chipCasesPlural') : t('chipCaseSingular')) + '</span>';
+  else out += '<span class="qchip ok"><span class="ic">✓</span>' + t('chipNoCases') + '</span>';
 
   if (c.age != null) out += '<span class="qchip"><span class="ic">🎂</span>' + c.age + '</span>';
   const a = fmtAmount(c.assets);
@@ -132,63 +134,64 @@ function tabBtn(id, key, label, cur){
 function kv(k, v){ return '<div class="kv"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
 
 function renderDetail(c){
-  const t = activeTab[c.id] || 'credentials';
+  // Named tabKey, not "t" — "t" is the global translation function, and
+  // shadowing it here silently broke every t() call for the rest of this
+  // function's scope. Caught before shipping only because it was checked.
+  const tabKey = activeTab[c.id] || 'credentials';
   let html = '<div class="tabs">' +
-    tabBtn(c.id, 'credentials', 'Credentials', t) +
-    tabBtn(c.id, 'declarations', 'Declarations', t) +
-    tabBtn(c.id, 'promises', 'Promises', t) +
-    tabBtn(c.id, 'background', 'News & background', t) + '</div>';
+    tabBtn(c.id, 'credentials', t('tabCredentials'), tabKey) +
+    tabBtn(c.id, 'declarations', t('tabDeclarations'), tabKey) +
+    tabBtn(c.id, 'promises', t('tabPromises'), tabKey) +
+    tabBtn(c.id, 'background', t('tabBackground'), tabKey) + '</div>';
 
-  html += '<div class="tab-panel' + (t === 'credentials' ? ' active' : '') + '">';
-  html += kv('Age', c.age == null ? '<span class="m-missing">Not available</span>' : c.age);
-  html += kv('Education', esc(c.education));
-  html += kv('Profession', esc(c.profession));
-  html += kv('Terms served (this seat)', c.terms);
-  html += kv('Ballot symbol', symChip(c.party));
+  html += '<div class="tab-panel' + (tabKey === 'credentials' ? ' active' : '') + '">';
+  html += kv(t('age'), c.age == null ? '<span class="m-missing">Not available</span>' : c.age);
+  html += kv(t('education'), esc(c.education));
+  html += kv(t('profession'), esc(c.profession));
+  html += kv(t('termsServed'), c.terms);
+  html += kv(t('ballotSymbol'), symChip(c.party));
   html += '</div>';
 
-  html += '<div class="tab-panel' + (t === 'declarations' ? ' active' : '') + '">';
+  html += '<div class="tab-panel' + (tabKey === 'declarations' ? ' active' : '') + '">';
   html += '<div class="stamp">SWORN<br>AFFIDAVIT</div>';
   const fc = c.criminalCount == null ? 'flag-unknown' : (c.criminalCount > 0 ? 'flag-some' : 'flag-none');
-  const ft = c.criminalCount == null ? 'Case count not captured'
-    : (c.criminalCount > 0 ? c.criminalCount + ' criminal case' + (c.criminalCount > 1 ? 's' : '') + ' declared' : 'No criminal cases declared');
+  const ft = c.criminalCount == null ? "We don't have this information yet"
+    : (c.criminalCount > 0 ? c.criminalCount + ' criminal case' + (c.criminalCount > 1 ? 's' : '') + ' declared' : t('noCriminalCases'));
   html += '<div class="criminal-flag ' + fc + '">' + ft + '</div>';
   html += '<div style="clear:both;font-size:12px;color:var(--text-muted);margin-bottom:8px">' + c.criminalNote + '</div>';
-  html += kv('Declared assets', esc(c.assets));
-  html += kv('Declared liabilities', esc(c.liabilities));
+  html += kv(t('declaredAssets'), esc(c.assets));
+  html += kv(t('declaredLiabilities'), esc(c.liabilities));
   if (c.assetHistory) html += '<div class="note">' + c.assetHistory + '</div>';
   html += c.sourceUrl
     ? '<div class="src-link">Source: <a href="' + c.sourceUrl + '" target="_blank" rel="noopener">' + esc(c.name) + ' — ADR/MyNeta affidavit record</a></div>'
-    : '<div class="src-link" style="color:var(--text-faint)">No individual affidavit page located for this candidate in this research pass.</div>';
+    : "<div class=\"src-link\" style=\"color:var(--text-faint)\">We don't have a source link for this candidate yet.</div>";
   html += '</div>';
 
   /* Promises: grouped by category so a voter can find the one topic they care
    * about instead of reading a whole manifesto. */
-  html += '<div class="tab-panel' + (t === 'promises' ? ' active' : '') + '">';
+  html += '<div class="tab-panel' + (tabKey === 'promises' ? ' active' : '') + '">';
   const proms = promisesFor(c);
   if (!proms.length){
-    html += '<div style="font-size:12px;color:var(--text-muted)">' + (c.manifestoNote || 'No published manifesto found for this party.') + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted)">' + (c.manifestoNote || t('noManifesto')) + '</div>';
   } else {
     const groups = {};
     proms.forEach(p => { (groups[p.category] = groups[p.category] || []).push(p); });
     PROMISE_CATEGORIES.forEach(cat => {
       if (!groups[cat.key]) return;
-      html += '<div class="promise-group"><h4><span class="pcat"><span class="pi">' + cat.icon + '</span>' + cat.label + '</span></h4>';
+      html += '<div class="promise-group"><h4><span class="pcat"><span class="pi">' + cat.icon + '</span>' + categoryLabel(cat.key) + '</span></h4>';
       groups[cat.key].forEach(p => {
         html += '<div class="plist-item"><span class="bullet">•</span><span>' + esc(p.text) +
-          (p.needsReview ? '<span class="review-flag" title="The classifier was not confident about this category — flagged for human review, not hidden.">category unsure</span>' : '') +
+          (p.needsReview ? "<span class=\"review-flag\" title=\"We're not fully sure this is the right topic for this promise.\">topic unsure</span>" : '') +
           '</span></div>';
       });
       html += '</div>';
     });
-    html += '<div class="note">These are <b>party</b> manifesto pledges, which is what is actually published and citable. ' +
-      'Constituency-level promises are usually spoken at rallies, not written down, and are not archived anywhere reliable — ' +
-      'so this app does not show any. Categories are auto-assigned; anything marked "category unsure" is awaiting a human check.</div>';
+    html += '<div class="note">' + t('promiseDisclaimer') + '</div>';
   }
   html += '</div>';
 
   /* News: key points first (what we actually found), then links out. */
-  html += '<div class="tab-panel' + (t === 'background' ? ' active' : '') + '">';
+  html += '<div class="tab-panel' + (tabKey === 'background' ? ' active' : '') + '">';
   if (c.newsStatus === 'not-researched'){
     html += '<div style="font-size:12px;color:var(--text-muted)">' + NOT_RESEARCHED_NOTE + '</div>';
   } else if (c.newsStatus === 'no-coverage'){
@@ -225,16 +228,19 @@ function renderDetail(c){
  * It sorts but never scores: there is no computed "best candidate" column,
  * because collapsing criminal cases, education and wealth into one number is a
  * values judgment, not a fact, and it is not this app's to make. */
+/* labelKey is resolved through t() at render time (not baked in here) so
+ * column headers switch language immediately when renderMatrix() re-runs
+ * after a language change. */
 const MATRIX_COLS = [
-  { key:'sno',      label:'#',          type:'num',  get:c => c.sno },
-  { key:'name',     label:'Candidate',  type:'str',  get:c => c.name, sticky:true },
-  { key:'age',      label:'Age',        type:'num',  get:c => c.age },
-  { key:'edu',      label:'Education',  type:'num',  get:c => c.eduLevel },
-  { key:'crime',    label:'Criminal cases', type:'num', get:c => c.criminalCount },
-  { key:'assets',   label:'Declared assets', type:'num', get:c => parseAmount(c.assets) },
-  { key:'liab',     label:'Liabilities', type:'num', get:c => parseAmount(c.liabilities) },
-  { key:'terms',    label:'Terms',      type:'num',  get:c => c.terms },
-  { key:'prof',     label:'Profession', type:'str',  get:c => c.profession }
+  { key:'sno',      labelKey:'colHash',       type:'num',  get:c => c.sno },
+  { key:'name',     labelKey:'colCandidate',  type:'str',  get:c => c.name, sticky:true },
+  { key:'age',      labelKey:'age',           type:'num',  get:c => c.age },
+  { key:'edu',      labelKey:'education',     type:'num',  get:c => c.eduLevel },
+  { key:'crime',    labelKey:'colCriminalCases', type:'num', get:c => c.criminalCount },
+  { key:'assets',   labelKey:'declaredAssets', type:'num', get:c => parseAmount(c.assets) },
+  { key:'liab',     labelKey:'colLiabilities', type:'num', get:c => parseAmount(c.liabilities) },
+  { key:'terms',    labelKey:'colTerms',      type:'num',  get:c => c.terms },
+  { key:'prof',     labelKey:'profession',    type:'str',  get:c => c.profession }
 ];
 
 const EDU_LABELS = { 1:'8th', 2:'10th', 3:'12th', 4:'Graduate', 5:'Post-grad', 6:'Doctorate' };
@@ -277,19 +283,19 @@ function renderMatrix(){
   let html = '<div class="matrix-wrap"><table class="matrix"><thead><tr>';
   MATRIX_COLS.forEach(mc => {
     const arrow = matrixSort.col === mc.key ? '<span class="arrow">' + (matrixSort.dir > 0 ? '▲' : '▼') + '</span>' : '';
-    html += '<th' + (mc.sticky ? ' class="cname"' : '') + ' onclick="sortMatrix(\'' + mc.key + '\')">' + mc.label + arrow + '</th>';
+    html += '<th' + (mc.sticky ? ' class="cname"' : '') + ' onclick="sortMatrix(\'' + mc.key + '\')">' + t(mc.labelKey) + arrow + '</th>';
   });
   html += '</tr></thead><tbody>';
 
   list.forEach(cand => {
     html += '<tr>';
     html += '<td><span class="amt">' + cand.sno + '</span></td>';
-    html += '<td class="cname"><span class="m-name">' + esc(cand.name) + (cand.winner ? ' <span class="winner-badge">Won</span>' : '') + '</span>' +
+    html += '<td class="cname"><span class="m-name">' + esc(cand.name) + (cand.winner ? ' <span class="winner-badge">' + t('winnerBadge') + '</span>' : '') + '</span>' +
             '<span class="m-party">' + symChip(cand.party, { showName:false }) + esc(cand.party) + '</span></td>';
-    html += '<td>' + (cand.age == null ? '<span class="m-missing">not recorded</span>' : cand.age) + '</td>';
+    html += '<td>' + (cand.age == null ? '<span class="m-missing">' + t('matrixNotRecorded') + '</span>' : cand.age) + '</td>';
 
     if (cand.eduLevel == null){
-      html += '<td><span class="m-missing">not recorded</span></td>';
+      html += '<td><span class="m-missing">' + t('matrixNotRecorded') + '</span></td>';
     } else {
       let pips = '';
       for (let i = 1; i <= 6; i++) pips += '<span class="edu-pip' + (i <= cand.eduLevel ? ' on' : '') + '"></span>';
@@ -298,9 +304,9 @@ function renderMatrix(){
     }
 
     if (cand.criminalCount == null){
-      html += '<td><span class="crime-unk" title="Not captured in this data pull — not the same as zero.">not recorded</span></td>';
+      html += "<td><span class=\"crime-unk\" title=\"We don't have this information yet — that's different from zero cases.\">" + t('matrixNotRecorded') + "</span></td>";
     } else if (cand.criminalCount === 0){
-      html += '<td><span class="crime-zero">✓ none</span></td>';
+      html += '<td><span class="crime-zero">✓ ' + t('matrixNone') + '</span></td>';
     } else {
       let dots = '';
       for (let i = 0; i < Math.min(cand.criminalCount, 10); i++) dots += '<span class="crime-dot"></span>';
@@ -309,11 +315,11 @@ function renderMatrix(){
     }
 
     const av = parseAmount(cand.assets), af = fmtAmount(cand.assets);
-    html += '<td>' + (af === null ? '<span class="m-missing">not recorded</span>'
+    html += '<td>' + (af === null ? '<span class="m-missing">' + t('matrixNotRecorded') + '</span>'
       : '<span class="amt">' + af + '</span><span class="abar"><i style="width:' + Math.max(2, (av / maxAssets) * 100) + '%"></i></span>') + '</td>';
 
     const lf = fmtAmount(cand.liabilities);
-    html += '<td>' + (lf === null ? '<span class="m-missing">not recorded</span>' : '<span class="amt">' + lf + '</span>') + '</td>';
+    html += '<td>' + (lf === null ? '<span class="m-missing">' + t('matrixNotRecorded') + '</span>' : '<span class="amt">' + lf + '</span>') + '</td>';
     html += '<td>' + cand.terms + '</td>';
     html += '<td style="max-width:190px;font-size:11.5px">' + esc(cand.profession) + '</td>';
     html += '</tr>';
@@ -321,17 +327,14 @@ function renderMatrix(){
 
   html += '</tbody></table></div>';
   html += '<div class="legend-row">' +
-    '<span><span class="crime-dot"></span> one declared criminal case</span>' +
-    '<span><span class="edu-pip on"></span><span class="edu-pip on"></span><span class="edu-pip"></span> education level</span>' +
-    '<span class="m-missing">not recorded = we could not read it, which is not the same as zero</span>' +
+    '<span><span class="crime-dot"></span> ' + t('legendCrimeDot') + '</span>' +
+    '<span><span class="edu-pip on"></span><span class="edu-pip on"></span><span class="edu-pip"></span> ' + t('legendEduLevel') + '</span>' +
+    '<span class="m-missing">' + t('legendNotRecorded') + '</span>' +
     '</div>';
-  html += '<div class="disclaimer-note"><b>This table sorts. It does not score.</b> ' +
-    'Click any column heading to reorder by that measure. There is deliberately no overall ranking: ' +
-    'deciding how criminal cases weigh against education or wealth is a judgment about values, and it belongs to you, not to this app. ' +
-    'A declared criminal case is a <b>charge that has not been tried</b>, not a conviction.</div>';
+  html += '<div class="disclaimer-note">' + t('matrixDisclaimer') + '</div>';
 
   document.getElementById('matrixSub').textContent =
-    c.label + ' · ' + c.candidates.length + ' candidates · sorted by ' + col.label.toLowerCase();
+    c.label + ' · ' + c.candidates.length + ' ' + t('candidatesWord') + ' · ' + t('sortedBy') + ' ' + t(col.labelKey);
   document.getElementById('matrixContent').innerHTML = html;
 }
 
@@ -357,17 +360,17 @@ function renderPromiseCanvas(){
   const present = PROMISE_CATEGORIES.filter(cat => counts[cat.key]);
 
   let html = '<div class="cat-bar">';
-  html += '<button class="cat-btn' + (activeCat === 'all' ? ' active' : '') + '" onclick="setCat(\'all\')">All topics</button>';
+  html += '<button class="cat-btn' + (activeCat === 'all' ? ' active' : '') + '" onclick="setCat(\'all\')">' + t('allTopics') + '</button>';
   present.forEach(cat => {
     html += '<button class="cat-btn' + (activeCat === cat.key ? ' active' : '') + '" onclick="setCat(\'' + cat.key + '\')">' +
-      '<span>' + cat.icon + '</span>' + cat.label + '<span class="cnt">' + counts[cat.key] + '</span></button>';
+      '<span>' + cat.icon + '</span>' + categoryLabel(cat.key) + '<span class="cnt">' + counts[cat.key] + '</span></button>';
   });
   html += '</div>';
 
-  if (activeCat !== 'all'){
-    const cat = catByKey(activeCat);
-    html += '<div class="cat-blurb">' + cat.icon + ' ' + esc(cat.blurb) + '</div>';
-  }
+  // A separate description line under the selected topic isn't shown here:
+  // promise_taxonomy.py's blurb text is English-only, and repeating it under
+  // an already-translated button label in another language read as broken
+  // (half English, half not) rather than helpful — the label alone is enough.
 
   /* One column per candidate that has a manifesto. Candidates without one are
    * summarised below rather than rendered as a wall of empty cards — but they
@@ -382,12 +385,12 @@ function renderPromiseCanvas(){
     html += '<div class="pcol"><h5>' + esc(cand.name) + '</h5>' +
       '<div class="pc-party">' + symChip(cand.party, { showName:false }) + esc(cand.party) + '</div>';
     if (!proms.length){
-      html += '<div class="none">No pledge in this category from this party’s manifesto.</div>';
+      html += '<div class="none">' + t('noPledgeInTopic') + '</div>';
     } else {
       proms.forEach(p => {
         const cat = catByKey(p.category);
         html += '<div class="plist-item"><span class="bullet">' + (activeCat === 'all' ? cat.icon : '•') + '</span><span>' +
-          esc(p.text) + (p.needsReview ? '<span class="review-flag">category unsure</span>' : '') + '</span></div>';
+          esc(p.text) + (p.needsReview ? '<span class="review-flag">' + t('topicUnsure') + '</span>' : '') + '</span></div>';
       });
     }
     html += '</div>';
@@ -395,18 +398,13 @@ function renderPromiseCanvas(){
   html += '</div>';
 
   if (without.length){
-    html += '<div class="disclaimer-note"><b>' + without.length + ' of ' + list.length +
-      ' candidates have no published manifesto to compare</b> — ' +
-      esc(without.map(x => x.name).join(', ')) + '. ' +
-      'That is mostly independents and small parties, which typically do not publish one at all. ' +
-      'They are listed here rather than hidden, because "made no written promises" is a real fact about a candidate.</div>';
+    html += '<div class="disclaimer-note"><b>' + t('noManifestoCount').replace('{n}', without.length).replace('{total}', list.length) +
+      '</b> — ' + esc(without.map(x => x.name).join(', ')) + '. ' + t('noManifestoExplain') + '</div>';
   }
-  html += '<div class="disclaimer-note">Promises come from <b>party</b> manifestos, the only pledges published in citable form. ' +
-    'Categories are assigned automatically by keyword; where the classifier was unsure it says so rather than guessing quietly. ' +
-    'A manifesto pledge is a statement of intent — this app does not track whether it was kept.</div>';
+  html += '<div class="disclaimer-note">' + t('promiseDisclaimer') + '</div>';
 
   document.getElementById('promiseSub').textContent =
-    c.label + ' · ' + present.length + ' topics covered across ' + withManifesto.length + ' manifestos';
+    c.label + ' · ' + present.length + ' ' + t('topicsCoveredAcross') + ' ' + withManifesto.length + ' ' + t('manifestosWord');
   document.getElementById('promiseContent').innerHTML = html;
 }
 

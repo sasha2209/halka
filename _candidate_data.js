@@ -27,7 +27,7 @@ const dighaCandidates = [
     age:33, education:"Post Graduate \u2014 M.A. Women's Studies, TISS Hyderabad (2016); Masters, Journalism & Mass Comm, Nalanda Open University (2018)",
     eduLevel:5, terms:0,
     profession:"Visiting faculty, Patna College, Patna",
-    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled for this demo \u2014 see the source link for the full record.",
+    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. We haven't added the specific charge details yet \u2014 see the source link for the full record.",
     assets:"\u20b992,26,869 (~92 Lakh+)", liabilities:"Nil", assetHistory:null,
     manifesto: MGB_MANIFESTO, manifestoNote:null,
     sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=180",
@@ -134,7 +134,7 @@ const dighaCandidates = [
   {
     id:11, sno:11, winner:false, name:"Shwet Ranjan", party:"Independent", tag:"tag-ind",
     age:31, education:"Graduate Professional", eduLevel:4, terms:0, profession:"Not listed in this data pull",
-    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled for this demo \u2014 see the source link for the full record.",
+    criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. We haven't added the specific charge details yet \u2014 see the source link for the full record.",
     assets:"\u20b975,972 (~75 Thousand+)", liabilities:"Nil", assetHistory:null,
     manifesto: [], manifestoNote:"Contesting as an independent \u2014 no party manifesto.",
     sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=1314",
@@ -149,7 +149,7 @@ const bankipurCandidates = [
     age:32, education:"Graduate \u2014 B.A., Magadh University, Sakurabad, Jahanabad (2024)", eduLevel:5, terms:0,
     profession:"Social worker & businessman; BJP Yuva Morcha (youth wing) organisational worker",
     criminalCount:0, criminalNote:"No pending criminal cases declared in the affidavit.",
-    assets:"Not available in this pull \u2014 Hindi-language reporting on his affidavit states he owns no house; full figures not captured", liabilities:"Not available in this pull", assetHistory:null,
+    assets:"Not available \u2014 Hindi-language reporting on his affidavit states he owns no house; full figures not captured", liabilities:"Not available", assetHistory:null,
     manifesto: [], manifestoNote:"No individual manifesto found; contesting as the NDA/BJP's chosen candidate for this by-election.",
     sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2964",
     newsStatus:"researched",
@@ -171,14 +171,14 @@ const bankipurCandidates = [
     eduLevel:5, terms:0,
     profession:"Political advisor & consultant; founder of IPAC",
     criminalCount:8, criminalNote:"8 cases declared as pending, per his affidavit and news reporting. Charges have not yet even been framed in any of them, and he has not been convicted in any \u2014 an earlier stage than several other candidates in this app whose charges have been framed. Cases are reported to relate to alleged rioting and obstructing public servants; he has filed petitions in the Patna High Court in some of them.",
-    assets:"\u20b996,00,00,000+ (~96 Crore+, his own declaration)", liabilities:"Not available in this pull", assetHistory:null,
+    assets:"\u20b996,00,00,000+ (~96 Crore+, his own declaration)", liabilities:"Not available", assetHistory:null,
     manifesto: JANSURAAJ_AGENDA, manifestoNote:null,
     sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2966",
     newsStatus:"researched",
     background:[
       {text:"Founder of IPAC (Indian Political Action Committee) and a political strategist who has advised numerous parties over more than a decade; this bypoll is his own political debut as a candidate."},
       {text:"His wife, Dr Jahnavi Das, is an MBBS doctor and senior advisor at Apollo Indraprastha Hospital, New Delhi, and declared even greater personal assets \u2014 about \u20b9101.93 crore. Combined, the couple's declared wealth exceeds \u20b9197 crore."},
-      {text:"Has publicly alleged that Deputy CM Samrat Choudhary submitted a fake age certificate to escape trial in a 1995 case linked to seven deaths in Tarapur; Choudhary has filed a separate defamation suit against Kishor over an unrelated, unproven bribery allegation. Neither claim had been adjudicated as of this research pass.", flag:true, flagLabel:"Unresolved allegations, both directions"},
+      {text:"Has publicly alleged that Deputy CM Samrat Choudhary submitted a fake age certificate to escape trial in a 1995 case linked to seven deaths in Tarapur; Choudhary has filed a separate defamation suit against Kishor over an unrelated, unproven bribery allegation. Neither claim has been decided by a court as of this writing.", flag:true, flagLabel:"Unresolved allegations, both directions"},
       {text:"On filing his nomination he said the contest was about \u201cpeople with criminal records\u201d having to \u201cgive up their chair\u201d \u2014 a notable framing given his own 8 pending cases, worth weighing on its own terms rather than taking either side's framing at face value."}
     ],
     newsLinks:[
@@ -193,7 +193,7 @@ const bankipurCandidates = [
     age:46, education:"Graduate \u2014 B.A., Ram Narayan Memorial College (Vinoba Bhave University), Hazaribagh (2000)", eduLevel:5, terms:0,
     profession:"Businesswoman",
     criminalCount:1, criminalNote:"1 case declared as pending in the affidavit. Specific charge detail wasn't pulled in this pass \u2014 see the source link for the full record.",
-    assets:"Not available in this pull", liabilities:"Not available in this pull", assetHistory:null,
+    assets:"Not available", liabilities:"Not available", assetHistory:null,
     manifesto: MGB_MANIFESTO, manifestoNote:null,
     sourceUrl:"https://www.myneta.info/Bihar2025/candidate.php?candidate_id=2954",
     newsStatus:"researched",
@@ -211,9 +211,9 @@ const bankipurCandidates = [
 const datiaCandidates = [
   {
     id:201, sno:1, winner:false, name:"Ashutosh Tiwari", party:"BJP", tag:"tag-a",
-    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
+    age:null, education:"Not available", eduLevel:null, terms:0,
     profession:"BJP party worker",
-    criminalCount:null, criminalNote:"Criminal case count not captured in this research pass \u2014 the reporting found covered his declared assets, not his criminal declarations.",
+    criminalCount:null, criminalNote:"We don't have this candidate's criminal case count yet \u2014 the coverage we found was about his declared assets, not his criminal record.",
     assets:"\u20b91.79 Crore+ (his own declaration)", liabilities:"\u20b911.83 Lakh+ (bank loan)",
     assetHistory:"His wife, Kalpana Tiwari, separately declared about \u20b91.76 crore, including over \u20b91.31 crore in agricultural land.",
     manifesto: [], manifestoNote:"No individual manifesto found; contesting as the BJP's chosen candidate for this by-election.",
@@ -231,9 +231,9 @@ const datiaCandidates = [
   },
   {
     id:202, sno:2, winner:false, name:"Ghanshyam Singh", party:"INC", tag:"tag-b",
-    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
+    age:null, education:"Not available", eduLevel:null, terms:0,
     profession:"Head of the former Datia royal family (\u201cRaja Saheb\u201d); landholder and businessman",
-    criminalCount:null, criminalNote:"Criminal case count not captured in this research pass.",
+    criminalCount:null, criminalNote:"We don't have this candidate's criminal case count yet.",
     assets:"\u20b920.08 Crore+ (his own declaration \u2014 agricultural and non-agricultural land, commercial property, 240g gold)", liabilities:"\u20b95.63 Lakh+ (bank loan)",
     assetHistory:"His wife separately declared about \u20b984.17 lakh in assets and 580g of gold.",
     manifesto: MGB_MANIFESTO, manifestoNote:null,
@@ -250,10 +250,10 @@ const datiaCandidates = [
   },
   {
     id:203, sno:3, winner:false, name:"Sanjana Singh Kinnar", party:"Bharatiya Gan Warta Party", tag:"tag-c",
-    age:null, education:"Not available in this pull", eduLevel:null, terms:0,
-    profession:"Not available in this pull",
+    age:null, education:"Not available", eduLevel:null, terms:0,
+    profession:"Not available",
     criminalCount:null, criminalNote:"Not researched in this pass \u2014 no individual MyNeta affidavit page located yet.",
-    assets:"Not available in this pull", liabilities:"Not available in this pull", assetHistory:null,
+    assets:"Not available", liabilities:"Not available", assetHistory:null,
     manifesto: [], manifestoNote:"No published manifesto found for this party.",
     sourceUrl:null,
     newsStatus:"researched",
@@ -267,7 +267,7 @@ const CONSTITUENCIES = {
     banner:"Real data \u2014 Digha (Patna), Bihar 2025 Assembly Election, all 11 candidates. A declared criminal case is a charge, not a conviction." },
   bankipur: { label:"Bankipur (Patna), Bihar bypoll", candidates: bankipurCandidates, status:"upcoming", note:"This election hasn't happened yet \u2014 voting is 30 Jul 2026, results 3 Aug 2026. All three candidates shown have sourced MyNeta affidavit data as of 25 Jul 2026 (23 candidates filed in total for this seat; these three are the ones with substantial news coverage). Two candidates' affidavit names differ from how they're identified in news coverage \u2014 flagged on each candidate's card rather than resolved.",
     banner:"Real data \u2014 Bankipur (Patna) bypoll, voting 30 Jul 2026. A declared criminal case is a charge, not a conviction." },
-  datia: { label:"Datia, Madhya Pradesh bypoll", candidates: datiaCandidates, status:"upcoming", note:"Also voting 30 Jul 2026, results 3 Aug 2026 \u2014 the same day as Bankipur, in a different state entirely. This seat is vacant because the sitting MLA was disqualified after being convicted in a fraud case, a useful real contrast with the pending, unconvicted cases everywhere else in this app.",
+  datia: { label:"Datia, Madhya Pradesh bypoll", candidates: datiaCandidates, status:"upcoming", note:"Also voting 30 Jul 2026, results 3 Aug 2026 \u2014 the same day as Bankipur, in a different state entirely. This seat is vacant because the sitting MLA was disqualified after being convicted in a fraud case \u2014 worth noting since most declared cases you'll see elsewhere are still pending trial, not convictions.",
     banner:"Real data \u2014 Datia, Madhya Pradesh bypoll, voting 30 Jul 2026. A declared criminal case is a charge, not a conviction." }
 };
 

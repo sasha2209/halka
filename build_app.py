@@ -34,13 +34,64 @@ Usage: python3 build_app.py
 
 from __future__ import annotations
 
+import base64
 import json
+import mimetypes
 import re
 from pathlib import Path
 
 from promise_taxonomy import classify_manifesto, export_taxonomy_js
 
 HERE = Path(__file__).parent
+SYMBOLS_DIR = HERE / "assets" / "symbols"
+
+# Maps each placeholder in party_symbols.js to its real source file. Keys must
+# match SYMBOL_IMAGES in party_symbols.js exactly — a mismatch here means a
+# party's card renders a broken image instead of a party symbol, so this is
+# checked (embed_symbol_images asserts every placeholder was actually filled).
+SYMBOL_FILES = {
+    "bjp_lotus": "bjp_lotus.svg",
+    "inc_hand": "inc_hand.svg",
+    "bsp_elephant": "bsp_elephant.jpg",
+    "cpi_corn_sickle": "cpi_corn_sickle.svg",
+    "cpim_hammer_sickle_star": "cpim_hammer_sickle_star.svg",
+    "ncp_clock": "ncp_clock.png",
+    "aitc_flower_grass": "aitc_flower_grass.svg",
+    "rjd_lantern": "rjd_lantern.png",
+    "jdu_arrow": "jdu_arrow.svg",
+    "cpiml_l_flag_three_stars": "cpiml_l_flag_three_stars.png",
+}
+
+
+def embed_symbol_images(symbols_js: str) -> str:
+    """Replaces each __IMG_<key>__ placeholder in party_symbols.js with a real
+    base64 data URI, so the shipped app is a single file with no external
+    image requests — same portability guarantee as the rest of this project's
+    "single-file, no build step" design, just resolved at build time instead
+    of by hand.
+
+    Fails loudly if a source file is missing or a placeholder is left
+    unfilled: a silently broken image is a voter looking at a blank box where
+    a ballot symbol should be, which is worse than the build failing here.
+    """
+    for key, filename in SYMBOL_FILES.items():
+        path = SYMBOLS_DIR / filename
+        if not path.exists():
+            raise FileNotFoundError(
+                f"party_symbols.js references '{key}' but {path} doesn't exist. "
+                f"Every symbol placeholder must resolve to a real file — see assets/symbols/SOURCES.md."
+            )
+        mime = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+        data_uri = f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+        placeholder = f"__IMG_{key}__"
+        if placeholder not in symbols_js:
+            raise ValueError(f"Placeholder {placeholder} not found in party_symbols.js — check SYMBOL_FILES is in sync.")
+        symbols_js = symbols_js.replace(placeholder, data_uri)
+
+    leftover = re.findall(r"__IMG_\w+__", symbols_js)
+    if leftover:
+        raise ValueError(f"Unfilled image placeholders remain: {leftover}. Add them to SYMBOL_FILES.")
+    return symbols_js
 
 MANIFESTOS = {
     "NDA": [
@@ -113,7 +164,7 @@ def edu_level(education: str | None) -> int | None:
 
 def clean_education(education: str | None) -> str:
     if not education:
-        return "Not available in this data pull"
+        return "Not available"
     return re.sub(r"\s+", " ", education).strip()
 
 
@@ -166,18 +217,18 @@ def merge_bankipur(existing_js: str) -> str:
             "education": clean_education(c.get("education")),
             "eduLevel": edu_level(c.get("education")),
             "terms": 0,
-            "profession": (c.get("profession") or "Not listed in this data pull").strip(),
+            "profession": (c.get("profession") or "Not listed").strip(),
             "criminalCount": crim,
             "criminalNote": (
                 "No pending criminal cases declared in the affidavit."
                 if crim == 0 else
                 f"{crim} case(s) declared as pending in the affidavit. A declared case is a charge, "
-                "not a conviction — see the source link for the full record."
+                "not a conviction — see the candidate's source link for the full record."
                 if crim else
-                "Criminal case count could not be read from this affidavit in this pull."
+                "We don't have this information for this candidate yet."
             ),
-            "assets": c.get("assets") or "Not available in this data pull",
-            "liabilities": c.get("liabilities") or "Not available in this data pull",
+            "assets": c.get("assets") or "Not available",
+            "liabilities": c.get("liabilities") or "Not available",
             "assetHistory": None,
             "manifestoKey": PARTY_TO_MANIFESTO.get(party),
             "manifestoNote": (
@@ -210,11 +261,11 @@ def refresh_bankipur_note(js: str) -> str:
     the one thing this app sells: that what it says matches what it shows."""
     new_note = (
         '"This election hasn\'t happened yet \\u2014 voting is 30 Jul 2026, results 3 Aug 2026. '
-        'All 23 candidates who filed for this seat are shown, each with its own sworn-affidavit source link, '
-        'fetched live from ADR/MyNeta on 26 Jul 2026. Three of them were additionally hand-researched for news '
-        'coverage and background; the other 20 show affidavit data only, marked as not-yet-researched rather than '
-        'as having no coverage. Two candidates\' affidavit names differ from how news coverage identifies them '
-        '\\u2014 flagged on their cards rather than silently resolved."'
+        'All 23 candidates who filed for this seat are shown here, each linking to their own official record. '
+        'We\'ve added news coverage and background for 3 of them so far; the other 20 show their official '
+        'declaration only \\u2014 we just haven\'t gotten to their news coverage yet, not that there isn\'t any. '
+        'Two candidates go by a different name in news reports than on their official papers \\u2014 we\'ve noted '
+        'that on their cards rather than picking one."'
     )
     return re.sub(
         r'(bankipur: \{ label:"[^"]*", candidates: bankipurCandidates, status:"upcoming", note:)"(?:[^"\\]|\\.)*"',
@@ -237,9 +288,13 @@ def main():
     print("Building halka-app.html")
 
     shell = (HERE / "_ui_shell.html").read_text()
+    i18n = (HERE / "i18n.js").read_text()
     symbols = (HERE / "party_symbols.js").read_text()
     ui = (HERE / "_ui_code.js").read_text()
     data = (HERE / "_candidate_data.js").read_text()
+
+    print("Embedding real party symbol images…")
+    symbols = embed_symbol_images(symbols)
 
     print("Merging real scraped Bankipur data…")
     data = merge_bankipur(data)
@@ -247,11 +302,10 @@ def main():
     data = add_manifesto_keys(data)
 
     notes = (
-        'const NOT_RESEARCHED_NOTE = "News research hasn\'t been run for this candidate yet. '
-        'This is different from having checked and found nothing — at full scale this step has to run '
-        'for every candidate in every constituency.";\n'
-        'const NO_COVERAGE_NOTE = "Searched, and no independent news coverage turned up for this candidate '
-        'beyond the ECI affidavit record — typical for down-ballot candidates.";\n'
+        'const NOT_RESEARCHED_NOTE = "We haven\'t added news coverage for this candidate yet. '
+        'That\'s different from having looked and found nothing — check back closer to voting day.";\n'
+        'const NO_COVERAGE_NOTE = "We looked, and couldn\'t find independent news coverage of this candidate '
+        'beyond their official affidavit — common for candidates who aren\'t contesting a high-profile seat.";\n'
     )
 
     promises = classify_manifesto  # referenced for clarity
@@ -263,6 +317,7 @@ def main():
     )
 
     html = (shell
+            .replace("/*__I18N__*/", i18n)
             .replace("/*__PARTY_SYMBOLS__*/", symbols)
             .replace("/*__PROMISE_DATA__*/", promise_js)
             .replace("/*__CANDIDATE_DATA__*/", notes + "\n" + data)
